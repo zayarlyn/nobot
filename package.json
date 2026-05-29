@@ -1,0 +1,25 @@
+{
+  "name": "nobot",
+  "version": "0.0.1",
+  "private": true,
+  "workspaces": [
+    "app/*"
+  ],
+  "scripts": {
+    "dev": "concurrently --kill-others-on-fail --prefix-colors \"bgBlue.bold,bgMagenta.bold\" --prefix \"[{name}]\" --names \"api,web\" \"npm run dev --workspace=app/api\" \"npm run dev --workspace=app/web\"",
+    "dev:api": "npm run dev --workspace=app/api",
+    "dev:web": "npm run dev --workspace=app/web",
+    "build": "concurrently --kill-others-on-fail \"npm run build --workspace=app/api\" \"npm run build --workspace=app/web\"",
+    "typecheck": "concurrently \"npm run typecheck --workspace=app/api\" \"npm run typecheck --workspace=app/web\"",
+    "db:migrate": "npm run db:migrate --workspace=app/api",
+    "db:seed": "npm run db:seed --workspace=app/api",
+    "db:studio": "npm run db:studio --workspace=app/api",
+    "db:generate": "npm run db:generate --workspace=app/api",
+    "format": "prettier --write app",
+    "format:check": "prettier --check app"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "prettier": "^3.8.3"
+  }
+}

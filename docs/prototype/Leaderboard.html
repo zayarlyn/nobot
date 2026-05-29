@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NOBOT — Leaderboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    /* ---- leaderboard-specific ---- */
+    .lb-head { display: flex; flex-direction: column; gap: 10px; margin-bottom: 26px; }
+    .lb-title { font-family: var(--display); font-weight: 700; font-size: clamp(30px, 6vw, 54px); letter-spacing: .01em; line-height: .98; }
+    .lb-sub { color: var(--ink-dim); font-size: 13px; line-height: 1.6; max-width: 60ch; text-wrap: pretty; }
+
+    .net-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 26px; }
+    .net-strip .stat .v { display: flex; align-items: baseline; gap: 3px; }
+    .net-strip .stat .v small { font-size: 14px; font-family: var(--display); color: var(--ink-dim); }
+
+    /* podium */
+    .podium { display: grid; grid-template-columns: 1fr 1.15fr 1fr; gap: 12px; align-items: end; margin-bottom: 26px; }
+    .pod {
+      background: linear-gradient(180deg, var(--bg-1), var(--bg)); border: 1px solid var(--line-2);
+      border-radius: var(--radius); padding: 18px 14px; text-align: center; position: relative; overflow: hidden;
+    }
+    .pod::after { content: ""; position: absolute; inset: 0 0 auto 0; height: 2px; }
+    .pod.p1 { border-color: var(--cyan-d); box-shadow: 0 0 34px rgba(52,231,255,.12); padding-top: 26px; }
+    .pod.p1::after { background: var(--cyan); box-shadow: var(--cyan-glow); }
+    .pod.p2::after { background: var(--ink-dim); }
+    .pod.p3::after { background: #8a5a2b; }
+    .pod .medal { font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: .14em; color: var(--ink-faint); }
+    .pod.p1 .medal { color: var(--cyan); }
+    .pod .pav {
+      width: 56px; height: 56px; margin: 12px auto 10px; border-radius: 50%;
+      display: grid; place-items: center; font-family: var(--display); font-size: 22px; color: var(--ink);
+      background: linear-gradient(135deg, var(--bg-3), var(--line-2)); border: 1px solid var(--line-2);
+    }
+    .pod.p1 .pav { width: 66px; height: 66px; border-color: var(--cyan-d); color: var(--cyan); box-shadow: var(--cyan-glow); }
+    .pod .phandle { font-size: 12px; color: var(--ink); word-break: break-all; line-height: 1.3; }
+    .pod .pscore { font-family: var(--display); font-weight: 700; font-size: 26px; margin-top: 8px; }
+    .pod.p1 .pscore { font-size: 32px; color: var(--cyan); text-shadow: var(--cyan-glow); }
+    .pod .pacc { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-faint); margin-top: 4px; }
+
+    /* table */
+    .lb-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+    .lb-toolbar .eyebrow { white-space: nowrap; }
+    .lb-table { display: flex; flex-direction: column; gap: 6px; }
+    .lb-row {
+      display: grid; grid-template-columns: 48px 1fr 130px 96px 116px; align-items: center; gap: 14px;
+      background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 12px 16px; transition: .15s;
+    }
+    .lb-row.head { background: none; border-color: transparent; padding-block: 0 4px; }
+    .lb-row.head > * { font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--ink-faint); }
+    .lb-row:not(.head):hover { border-color: var(--line-2); transform: translateX(3px); }
+    .lb-row.you { border-color: var(--green-d); box-shadow: inset 0 0 20px rgba(77,255,176,.08); }
+    .lb-rank { font-family: var(--display); font-weight: 700; font-size: 17px; color: var(--ink-dim); text-align: center; }
+    .lb-row.you .lb-rank { color: var(--green); }
+    .lb-auditor { display: flex; align-items: center; gap: 11px; min-width: 0; }
+    .lb-av {
+      width: 36px; height: 36px; flex: none; border-radius: 50%; display: grid; place-items: center;
+      font-family: var(--display); font-size: 14px; color: var(--ink-dim);
+      background: linear-gradient(135deg, var(--bg-3), var(--line-2)); border: 1px solid var(--line-2);
+    }
+    .lb-row.you .lb-av { color: var(--green); border-color: var(--green-d); }
+    .lb-name { display: flex; flex-direction: column; min-width: 0; }
+    .lb-name .h { font-size: 13px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lb-name .u { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-faint); }
+    .lb-row.you .lb-name .u { color: var(--green); }
+    .lb-score { font-family: var(--display); font-weight: 700; font-size: 19px; color: var(--cyan); text-shadow: var(--cyan-glow); }
+    .lb-acc { display: flex; flex-direction: column; gap: 5px; }
+    .lb-acc .pct { font-size: 11px; color: var(--ink-dim); font-family: var(--display); }
+    .lb-acc .meter-track { height: 5px; }
+    .badge {
+      font-size: 9px; letter-spacing: .14em; text-transform: uppercase; font-weight: 700;
+      padding: 5px 9px; border-radius: 999px; border: 1px solid; text-align: center; white-space: nowrap; justify-self: start;
+    }
+    .badge.survivor { color: var(--green); border-color: var(--green-d); background: rgba(77,255,176,.07); }
+    .badge.flagged { color: var(--amber); border-color: rgba(255,207,77,.5); background: rgba(255,207,77,.06); }
+    .badge.assimilated { color: var(--magenta); border-color: rgba(255,61,127,.5); background: rgba(255,61,127,.06); }
+    .badge.verified { color: var(--green); border-color: var(--green-d); background: rgba(77,255,176,.1); box-shadow: 0 0 8px rgba(77,255,176,.2); }
+
+    @media (max-width: 760px) {
+      .net-strip { grid-template-columns: 1fr; }
+      .podium { grid-template-columns: 1fr; }
+      .pod.p1 { order: -1; }
+      .lb-row { grid-template-columns: 34px 1fr auto; gap: 10px; padding: 11px 13px; }
+      .lb-acc, .lb-row .badge { display: none; }
+      .lb-row.head .lb-acc, .lb-row.head .badge { display: none; }
+      .lb-row .lb-score { text-align: right; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="app">
+
+      <header class="topbar">
+        <a class="brand" href="Game.html" style="text-decoration:none">
+          NOBOT
+        </a>
+        <nav class="nav">
+          <button class="active">Leaderboard</button>
+          <button onclick="location.href='Discuss.html'">Discuss</button>
+          <button onclick="location.href='Profile.html'">Profile</button>
+          <button onclick="location.href='Contribute.html'">Contribute</button>
+        </nav>
+      </header>
+
+      <main class="screen wrap">
+        <div class="lb-head">
+          <div class="eyebrow neon-cyan">NOBOT · LEADERBOARD</div>
+          <h1 class="lb-title glitch" data-text="RANKINGS">RANKINGS</h1>
+          <p class="lb-sub">Ranked by <b class="neon-cyan">NOBOT Score</b> — how reliably each member tells human from synthetic.</p>
+        </div>
+
+        <div class="net-strip" id="netStrip"></div>
+
+        <div class="podium" id="podium"></div>
+
+        <div class="lb-toolbar">
+          <div class="eyebrow" id="tableLabel">ACCURACY RANKING</div>
+          <div class="seg" id="modeSeg">
+            <button class="on" data-m="accuracy">Accuracy</button>
+            <button data-m="karma">Karma</button>
+          </div>
+        </div>
+
+        <div class="lb-table" id="lbTable"></div>
+      </main>
+    </div>
+  </div>
+
+  <div class="fx-scanlines"></div>
+  <div class="fx-vignette"></div>
+
+  <script src="game/data.js"></script>
+  <script>
+    (function () {
+      const { LEADERBOARD, NETWORK } = window.DATA;
+
+      // ---- merge player's real best run into the "you" row ----
+      const best = window.DOAI ? window.DOAI.bestScore() : 0;
+      let rows = LEADERBOARD.map((r) => ({ ...r }));
+      const me = rows.find((r) => r.you);
+      if (best > 0 && me) {
+        me.score = Math.max(me.score, best);
+        const runs = window.DOAI.loadRuns();
+        if (runs.length) {
+          me.acc = runs[0].acc;
+          me.streak = Math.max(me.streak, runs[0].streak || 0);
+          me.verdict = (runs[0].verdict === "ACCESS GRANTED" || runs[0].verdict === "LAST HUMAN STANDING") ? "SURVIVOR"
+                     : (runs[0].verdict === "UNDER REVIEW" || runs[0].verdict === "FLAGGED") ? "FLAGGED"
+                     : (runs[0].verdict === "ACCESS DENIED" || runs[0].verdict === "ASSIMILATED") ? "ASSIMILATED" : me.verdict;
+        }
+      }
+
+      const isVerified = (window.DOAI ? window.DOAI.loadRuns() : []).some((r) => r.verdict === "ACCESS GRANTED");
+
+function vClass(v) {
+        return v === "SURVIVOR" ? "survivor" : v === "FLAGGED" ? "flagged" : "assimilated";
+      }
+      function fmt(n) { return n.toLocaleString("en-US"); }
+
+      // ---- network strip ----
+      function renderNet() {
+        const auditors = NETWORK.auditorsActive + (best > 0 ? 1 : 0);
+        const posts = window.DOAI ? window.DOAI.loadSubs().length : 0;
+        const threads = window.DOAI ? window.DOAI.loadThreads() : [];
+        const countReplies = (cs) => cs.reduce((a, c) => a + 1 + countReplies(c.replies || []), 0);
+        const comments = threads.reduce((n, t) => n + countReplies(t.comments || []), 0);
+        document.getElementById("netStrip").innerHTML = `
+          <div class="stat"><div class="k">Registered Members</div><div class="v neon-green">${fmt(NETWORK.humansRemaining)}</div></div>
+          <div class="stat"><div class="k">Active This Week</div><div class="v neon-cyan">${fmt(auditors)}</div></div>
+          <div class="stat"><div class="k">Human Content</div><div class="v neon-green">${fmt(posts + comments)}</div></div>`;
+      }
+
+      // ---- podium ----
+      function renderPodium() {
+        const sortKey = mode === "karma" ? "karma" : "score";
+        const top = [...rows].sort((a, b) => b[sortKey] - a[sortKey]).slice(0, 3);
+        const order = [top[1], top[0], top[2]];
+        const cls = ["p2", "p1", "p3"];
+        const medal = { p1: "01 · APEX", p2: "02", p3: "03" };
+        document.getElementById("podium").innerHTML = order.map((r, i) => `
+          <div class="pod ${cls[i]}">
+            <div class="medal">${medal[cls[i]]}</div>
+            <div class="pav">${r.av}</div>
+            <div class="phandle">${r.handle}</div>
+            <div class="pscore">${fmt(mode === "karma" ? r.karma : r.score)}</div>
+            <div class="pacc">${mode === "karma" ? r.posts + " posts · " + r.comments + " replies" : r.acc + "% accurate"}</div>
+          </div>`).join("");
+      }
+
+      // ---- table ----
+      let mode = "accuracy";
+
+      function renderTable() {
+        let list = rows.map((r) => ({ ...r }));
+
+        document.getElementById("tableLabel").textContent = mode === "karma" ? "KARMA RANKING" : "ACCURACY RANKING";
+
+        if (mode === "karma") {
+          list.sort((a, b) => b.karma - a.karma).slice(0, 20).forEach((r, i) => (r.rank = i + 1));
+          list = list.slice(0, 20);
+          const head = `<div class="lb-row head"><div class="lb-rank">#</div><div>Member</div><div>Karma</div><div class="lb-acc">Posts · Replies</div><div>Status</div></div>`;
+          const body = list.map((r) => `
+            <div class="lb-row ${r.you ? "you" : ""}">
+              <div class="lb-rank">${r.rank}</div>
+              <div class="lb-auditor">
+                <div class="lb-av">${r.av}</div>
+                <div class="lb-name">
+                  <span class="h">${r.handle}</span>
+                  <span class="u">${r.you ? "YOU · " : ""}${r.posts} posts · ${r.comments} replies</span>
+                  ${r.you && isVerified ? '<span class="badge verified" style="margin-top:4px">◉ VERIFIED HUMAN</span>' : ""}
+                </div>
+              </div>
+              <div class="lb-score">${fmt(r.karma)}</div>
+              <div class="lb-acc">
+                <span class="pct">${r.posts + r.comments}</span>
+                <div class="meter-track"><div class="meter-fill good" style="width:${Math.min(100, Math.round((r.posts + r.comments) / 4))}%"></div></div>
+              </div>
+              <div class="badge ${vClass(r.verdict)}">${r.verdict}</div>
+            </div>`).join("");
+          document.getElementById("lbTable").innerHTML = head + body;
+        } else {
+          list.sort((a, b) => b.score - a.score).slice(0, 20).forEach((r, i) => (r.rank = i + 1));
+          list = list.slice(0, 20);
+          const head = `<div class="lb-row head"><div class="lb-rank">#</div><div>Member</div><div>Score</div><div class="lb-acc">Accuracy</div><div>Status</div></div>`;
+          const body = list.map((r) => `
+            <div class="lb-row ${r.you ? "you" : ""}">
+              <div class="lb-rank">${r.rank}</div>
+              <div class="lb-auditor">
+                <div class="lb-av">${r.av}</div>
+                <div class="lb-name">
+                  <span class="h">${r.handle}</span>
+                  <span class="u">${r.you ? "YOU · " : ""}${r.audits} audits · ${r.streak} streak</span>
+                  ${r.you && isVerified ? '<span class="badge verified" style="margin-top:4px">◉ VERIFIED HUMAN</span>' : ""}
+                </div>
+              </div>
+              <div class="lb-score">${fmt(r.score)}</div>
+              <div class="lb-acc">
+                <span class="pct">${r.acc}%</span>
+                <div class="meter-track"><div class="meter-fill ${r.acc > 80 ? "good" : r.acc > 60 ? "warn" : "bad"}" style="width:${r.acc}%"></div></div>
+              </div>
+              <div class="badge ${vClass(r.verdict)}">${r.verdict}</div>
+            </div>`).join("");
+          document.getElementById("lbTable").innerHTML = head + body;
+        }
+      }
+
+      document.getElementById("modeSeg").addEventListener("click", (e) => {
+        const btn = e.target.closest("button"); if (!btn) return;
+        mode = btn.dataset.m;
+        [...e.currentTarget.children].forEach((b) => b.classList.toggle("on", b === btn));
+        renderPodium();
+        renderTable();
+      });
+
+      renderNet();
+      renderPodium();
+      renderTable();
+    })();
+  </script>
+</body>
+</html>

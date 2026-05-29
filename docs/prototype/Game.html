@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>NOBOT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="game/game.css" />
+</head>
+<body>
+  <div class="game-stage">
+
+    <!-- HUD -->
+    <header class="game-hud">
+      <div class="brand">NOBOT</div>
+      <div class="hud-meter">
+        <div class="lbl"><span>Integrity</span><span id="hudIntegrityV">70%</span></div>
+        <div class="meter-track"><div id="hudIntegrity" class="meter-fill good" style="width:70%"></div></div>
+      </div>
+      <div class="hud-stats">
+        <div class="hud-pill"><div class="k">Streak</div><div class="v neon-green" id="hudStreak">0</div></div>
+        <div class="hud-pill"><div class="k">Audited</div><div class="v" id="hudProcessed">0/10</div></div>
+      </div>
+      <nav class="nav">
+        <button onclick="location.href='Leaderboard.html'">Leaderboard</button>
+        <button onclick="location.href='Discuss.html'">Discuss</button>
+        <button onclick="location.href='Profile.html'">Profile</button>
+        <button onclick="location.href='Contribute.html'">Contribute</button>
+      </nav>
+    </header>
+
+    <!-- STAGE -->
+    <div class="stage-wrap">
+      <canvas id="game" width="960" height="600"></canvas>
+      <div class="controls-hint">WASD / ARROWS — MOVE&nbsp;&nbsp;·&nbsp;&nbsp;E — SCAN</div>
+      <button id="scanBtn" class="scan-btn">⌖ SCAN</button>
+      <div id="correctPopup" class="correct-popup">
+        <div class="cp-verdict">—</div>
+        <div class="cp-delta">—</div>
+      </div>
+
+      <div class="controls">
+        <div class="dpad">
+          <button class="dpad-btn up">▲</button>
+          <button class="dpad-btn left">◀</button>
+          <button class="dpad-btn right">▶</button>
+          <button class="dpad-btn down">▼</button>
+        </div>
+        <button class="act-btn">SCAN</button>
+      </div>
+    </div>
+
+    <!-- INTRO -->
+    <div class="overlay" id="intro">
+      <div class="gpanel wide">
+        <div class="eyebrow">HUMAN VERIFICATION PROTOCOL</div>
+        <div id="gateNotice" style="display:none;font-size:12px;letter-spacing:.1em;color:var(--magenta);margin-bottom:6px">⚠ ACCESS DENIED — verify your humanity to enter the Discussion forum.</div>
+        <div class="bigverdict glitch" data-text="NOBOT">NOBOT</div>
+        <p class="muted" style="font-size:14px;line-height:1.6;margin:0">
+          A humans-only group wants proof you're real. <span class="neon-cyan">Sort the posts. Spare the humans. Purge the bots.</span> A real human can smell a bot. A bot cannot.
+        </p>
+        <div class="row" style="gap:18px">
+          <div class="eyebrow neon-green" style="flex:1;text-align:center">◉ SPARE — HUMAN</div>
+          <div class="eyebrow neon-mag" style="flex:1;text-align:center">⬡ PURGE — BOT</div>
+        </div>
+        <button class="btn solid-green lg block" id="startBtn">BEGIN VERIFICATION ▸</button>
+      </div>
+    </div>
+
+    <!-- DIALOG / SCAN -->
+    <div class="overlay" id="dialog">
+      <div class="gpanel">
+        <div class="ghead" id="dlgHead">
+          <div class="eyebrow"><span class="neon-cyan">⌖</span> SUBMITTED · <span id="dlgTopic">—</span></div>
+          <button class="closex" id="dlgClose">✕</button>
+        </div>
+        <div class="post">
+          <div class="post-head">
+            <div class="avatar" id="dlgAv">?</div>
+            <div class="post-meta">
+              <div class="name" id="dlgName">—</div>
+              <div class="handle" id="dlgHandle">—</div>
+            </div>
+          </div>
+          <div class="post-img" id="dlgImgWrap" style="display:none"><img id="dlgImg" alt="submitted media" /></div>
+          <div class="post-body" id="dlgBody">—</div>
+        </div>
+        <div class="eyebrow" style="text-align:center">VERDICT?</div>
+        <div class="verdict-row">
+          <button class="btn green" id="spareBtn">SPARE<span class="sub">REAL HUMAN</span></button>
+          <button class="btn purge" id="purgeBtn">PURGE<span class="sub">BOT / AI</span></button>
+        </div>
+        <button class="btn amber block" id="flagBtn">⚑ FLAG AS AMBIGUOUS<span class="sub" style="margin-left:6px">2 LEFT</span></button>
+      </div>
+    </div>
+
+    <!-- REVEAL -->
+    <div class="overlay" id="reveal">
+      <div class="gpanel">
+        <div class="eyebrow">VERDICT LOGGED</div>
+        <div class="bigverdict" id="bigVerdict">—</div>
+        <div class="truth-line">This account was <b id="truthKind">—</b></div>
+        <hr class="divider" />
+        <div class="eyebrow">STYLE FINGERPRINT</div>
+        <div class="tells" id="tellsList"></div>
+        <hr class="divider" />
+        <div class="row between center">
+          <div class="delta" id="revealDelta">—</div>
+          <button class="btn solid-cyan" id="continueBtn">CONTINUE ▸</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="overlay" id="results">
+      <div class="gpanel wide">
+        <div class="eyebrow">VERIFICATION COMPLETE</div>
+        <div class="row center" style="align-items:flex-end;gap:18px">
+          <div class="bigscore neon-cyan" id="resScore">0</div>
+          <div class="col" style="gap:2px;padding-bottom:6px">
+            <div class="eyebrow">ACCURACY</div>
+            <div class="display" style="font-size:26px" id="resAcc">0%</div>
+          </div>
+        </div>
+        <hr class="divider" />
+        <div class="bigverdict" id="resVerdict">—</div>
+        <p class="muted" id="resBlurb" style="font-size:13px;line-height:1.6;margin:0">—</p>
+        <hr class="divider" />
+        <div class="score-grid">
+          <div class="stat"><div class="k">Bots Terminated</div><div class="v neon-cyan" id="resBots">0</div></div>
+          <div class="stat"><div class="k">Humans Saved</div><div class="v neon-green" id="resSaved">0</div></div>
+          <div class="stat"><div class="k">Humans Lost</div><div class="v neon-mag" id="resKilled">0</div></div>
+          <div class="stat"><div class="k">Bots Escaped</div><div class="v neon-mag" id="resEscaped">0</div></div>
+        </div>
+        <button class="btn solid-green lg block" id="joinBtn" style="display:none">JOIN THE FORUM ▸</button>
+        <button class="btn ghost lg block" id="playAgainBtn">▸ RETRY VERIFICATION</button>
+      </div>
+    </div>
+
+    <!-- AUTH -->
+    <div class="overlay" id="auth">
+      <div class="gpanel">
+        <div class="eyebrow">IDENTITY VERIFICATION</div>
+        <div class="bigverdict neon-green">ACCESS GRANTED</div>
+        <hr class="divider" />
+        <div class="col" style="gap:12px">
+          <input class="auth-inp" id="authUser" type="text" placeholder="USERNAME" maxlength="32" autocomplete="username" spellcheck="false" />
+          <input class="auth-inp" id="authPass" type="password" placeholder="PASSWORD" maxlength="64" autocomplete="current-password" />
+          <div id="authErr" style="min-height:16px;font-size:11px;letter-spacing:.08em;color:var(--magenta)"></div>
+          <button class="btn solid-green lg block" id="authSubmit">JOIN ▸</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- global FX overlays -->
+  <div class="fx-scanlines" id="fxScan"></div>
+  <div class="fx-vignette"></div>
+
+  <div id="tweaks-root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script src="game/data.js"></script>
+  <script src="game/world.js"></script>
+  <script src="game/engine.js"></script>
+  <script>
+    if (new URLSearchParams(window.location.search).get("gate") === "discuss")
+      document.getElementById("gateNotice").style.display = "block";
+
+    (function () {
+      const USER_KEY = "doai:user";
+      function loadUser() { try { return JSON.parse(localStorage.getItem(USER_KEY)); } catch(e) { return null; } }
+
+      function openAuth() {
+        document.getElementById("authUser").value = "";
+        document.getElementById("authPass").value = "";
+        document.getElementById("authErr").textContent = "";
+        document.getElementById("auth").classList.add("open");
+      }
+
+      document.getElementById("joinBtn").addEventListener("click", () => {
+        document.getElementById("results").classList.remove("open");
+        openAuth();
+      });
+
+      document.getElementById("authSubmit").addEventListener("click", () => {
+        const username = document.getElementById("authUser").value.trim();
+        const password = document.getElementById("authPass").value;
+        const err = document.getElementById("authErr");
+        if (!username) { err.textContent = "Enter a username."; return; }
+        if (!password)  { err.textContent = "Enter a password."; return; }
+        const user = loadUser();
+        if (user && user.username === username && user.password !== password) {
+          err.textContent = "Wrong password."; return;
+        }
+        if (!user) localStorage.setItem(USER_KEY, JSON.stringify({ username, password }));
+        window.location.href = "Discuss.html";
+      });
+
+      document.getElementById("authUser").addEventListener("keydown", (e) => { if (e.key === "Enter") document.getElementById("authPass").focus(); });
+      document.getElementById("authPass").addEventListener("keydown", (e) => { if (e.key === "Enter") document.getElementById("authSubmit").click(); });
+    })();
+  </script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="game/tweaks.jsx"></script>
+</body>
+</html>

@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NOBOT — Discussion</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    .dc-head { display: flex; flex-direction: column; gap: 10px; margin-bottom: 22px; }
+    .dc-title { font-family: var(--display); font-weight: 700; font-size: clamp(28px, 5.5vw, 46px); letter-spacing: .01em; line-height: 1; }
+    .dc-sub { color: var(--ink-dim); font-size: 13px; line-height: 1.6; max-width: 64ch; text-wrap: pretty; }
+    .dc-meta-strip { display: flex; gap: 18px; flex-wrap: wrap; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-faint); }
+    .dc-meta-strip b { font-family: var(--display); }
+
+    .dc-layout { display: grid; grid-template-columns: 1fr 260px; gap: 22px; align-items: start; }
+
+    /* composer */
+    .composer { background: linear-gradient(180deg, var(--bg-1), var(--bg)); border: 1px solid var(--line-2); border-radius: var(--radius); margin-bottom: 16px; overflow: hidden; }
+    .composer .collapsed { display: flex; align-items: center; gap: 12px; padding: 14px 16px; cursor: text; }
+    .composer .collapsed .avatar { width: 34px; height: 34px; font-size: 13px; }
+    .composer .collapsed .ph { flex: 1; font-size: 13px; color: var(--ink-faint); }
+    .composer .collapsed .ph::after { content: "▌"; color: var(--cyan); animation: pulse 1.2s infinite; }
+    .composer .body { display: none; padding: 16px; flex-direction: column; gap: 12px; }
+    .composer.open .collapsed { display: none; }
+    .composer.open .body { display: flex; }
+    .inp, textarea.inp, select.inp {
+      font-family: var(--ui); font-size: 14px; color: var(--ink);
+      background: var(--bg-2); border: 1px solid var(--line-2); border-radius: var(--radius);
+      padding: 11px 13px; width: 100%; transition: .15s; resize: vertical;
+    }
+    .inp:focus { outline: none; border-color: var(--cyan-d); box-shadow: inset 0 0 14px rgba(52,231,255,.08); }
+    .inp::placeholder { color: var(--ink-faint); }
+    .comp-row { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+    .flair-pick { display: flex; gap: 6px; flex-wrap: wrap; }
+    .flair { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line-2); color: var(--ink-dim); background: var(--bg-2); cursor: pointer; transition: .15s; }
+    .flair:hover { color: var(--ink); }
+    .flair.on { color: #04141a; border-color: transparent; }
+    .err { color: var(--magenta); font-size: 11px; letter-spacing: .08em; min-height: 14px; }
+
+    /* sort bar */
+    .sortbar { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+
+    /* thread card */
+    .thread { display: grid; grid-template-columns: 46px 1fr; background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 10px; transition: .15s; overflow: hidden; }
+    .thread:hover { border-color: var(--line-2); }
+    .vote-rail { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 12px 0; background: var(--bg); border-right: 1px solid var(--line); }
+    .vbtn { background: none; border: none; color: var(--ink-faint); cursor: pointer; font-size: 15px; line-height: 1; padding: 2px; transition: .12s; }
+    .vbtn:hover { color: var(--ink); }
+    .vbtn.up.on { color: var(--green); text-shadow: var(--green-glow); }
+    .vbtn.down.on { color: var(--magenta); text-shadow: var(--mag-glow); }
+    .vcount { font-family: var(--display); font-weight: 700; font-size: 13px; color: var(--ink); }
+    .vcount.pos { color: var(--green); }
+    .vcount.neg { color: var(--magenta); }
+
+    .thread-main { padding: 13px 16px 12px; min-width: 0; }
+    .thread-top { display: flex; align-items: center; gap: 9px; margin-bottom: 8px; font-size: 11px; color: var(--ink-faint); flex-wrap: wrap; }
+    .flair-badge { font-size: 9px; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; padding: 3px 8px; border-radius: 999px; }
+    .av-mini { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; font-family: var(--display); font-size: 10px; color: var(--ink-dim); background: linear-gradient(135deg, var(--bg-3), var(--line-2)); border: 1px solid var(--line-2); }
+    .thread-top .au { color: var(--ink-dim); }
+    .thread-title { font-size: 17px; font-weight: 700; color: var(--ink); line-height: 1.3; margin-bottom: 6px; text-wrap: pretty; }
+    .thread-body { font-size: 13px; line-height: 1.55; color: var(--ink-dim); text-wrap: pretty; }
+    .thread-actions { display: flex; gap: 8px; margin-top: 11px; }
+    .tact { font-family: var(--ui); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-faint); background: none; border: 1px solid transparent; border-radius: var(--radius); padding: 6px 10px; cursor: pointer; transition: .15s; display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+    .tact:hover { color: var(--ink); border-color: var(--line-2); }
+
+    /* comments */
+    .comments { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 12px; display: none; flex-direction: column; gap: 12px; }
+    .comments.open { display: flex; }
+    .cbox { display: flex; flex-direction: column; gap: 8px; }
+    .cbox .crow { display: flex; gap: 8px; }
+    .cbox textarea { min-height: 60px; }
+    .comment { display: grid; grid-template-columns: 26px 1fr; gap: 10px; }
+    .comment .crail { display: flex; flex-direction: column; align-items: center; }
+    .comment .vbtn { font-size: 12px; }
+    .comment .cmc { font-family: var(--display); font-size: 11px; color: var(--ink-dim); }
+    .comment .cmc.pos { color: var(--green); }
+    .comment .cbody-wrap { min-width: 0; }
+    .comment .chead { font-size: 11px; color: var(--ink-faint); margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+    .comment .chead .cau { color: var(--ink); font-weight: 700; }
+    .comment .ctext { font-size: 13px; line-height: 1.5; color: var(--ink); text-wrap: pretty; }
+    .comment .cacts { display: flex; gap: 8px; margin-top: 5px; }
+    .comment .creply { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-faint); background: none; border: none; cursor: pointer; padding: 2px 0; }
+    .comment .creply:hover { color: var(--cyan); }
+    .replies { margin-top: 12px; padding-left: 14px; border-left: 1px solid var(--line); display: flex; flex-direction: column; gap: 12px; }
+    .reply-box { margin-top: 8px; }
+
+    /* sidebar */
+    .side { position: sticky; top: 76px; display: flex; flex-direction: column; gap: 16px; }
+    .side-card { background: linear-gradient(180deg, var(--bg-1), var(--bg)); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+    .side-card h3 { font-family: var(--ui); font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--ink-dim); margin: 0 0 12px; }
+    .rule { display: flex; gap: 9px; font-size: 12px; color: var(--ink-dim); line-height: 1.5; }
+    .rule + .rule { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+    .rule .n { font-family: var(--display); color: var(--cyan); }
+    .flair-legend { display: flex; flex-direction: column; gap: 8px; }
+    .flair-legend .fl { display: flex; align-items: center; gap: 9px; font-size: 11px; color: var(--ink-dim); }
+    .flair-legend .swatch { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+
+    .empty { color: var(--ink-faint); font-size: 12px; padding: 30px; text-align: center; border: 1px dashed var(--line); border-radius: var(--radius); }
+
+    @media (max-width: 860px) {
+      .dc-layout { grid-template-columns: 1fr; }
+      .side { position: static; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="app">
+
+      <header class="topbar">
+        <a class="brand" href="Game.html" style="text-decoration:none">
+          NOBOT
+        </a>
+        <nav class="nav">
+          <button onclick="location.href='Leaderboard.html'">Leaderboard</button>
+          <button class="active">Discuss</button>
+          <button onclick="location.href='Profile.html'">Profile</button>
+          <button onclick="location.href='Contribute.html'">Contribute</button>
+        </nav>
+      </header>
+
+      <main class="screen wrap">
+        <div class="dc-head">
+          <div class="eyebrow neon-cyan">COMMUNITY · r/nobot</div>
+          <h1 class="dc-title glitch" data-text="THE HOLDOUTS">THE HOLDOUTS</h1>
+          <p class="dc-sub">Where the last verified humans compare tells, call out bot farms, and argue about whether any of us are still real. Post a theory, upvote a good catch, reply in the threads.</p>
+          <div class="dc-meta-strip">
+            <span><b class="neon-green" id="memberCount">11,842</b> HUMANS</span>
+            <span><b class="neon-cyan" id="onlineCount">348</b> SCANNING NOW</span>
+            <span><b id="threadCount">0</b> THREADS</span>
+          </div>
+        </div>
+
+        <div class="dc-layout">
+          <div>
+            <!-- composer -->
+            <div class="composer" id="composer">
+              <div class="collapsed" id="compCollapsed">
+                <div class="avatar" id="compAv">L</div>
+                <div class="ph">Drop a tell, a sighting, a theory</div>
+              </div>
+              <div class="body">
+                <input class="inp" id="compTitle" placeholder="Title — make the catch obvious" maxlength="120" />
+                <textarea class="inp" id="compBody" rows="3" placeholder="Lay out the evidence…" maxlength="600"></textarea>
+                <div class="flair-pick" id="flairPick"></div>
+                <div class="err" id="compErr"></div>
+                <div class="comp-row">
+                  <div class="muted" style="font-size:11px;letter-spacing:.1em">POSTING AS <b style="color:var(--ink)" id="compWho">@last_human_online</b></div>
+                  <div style="display:flex;gap:8px">
+                    <button class="btn ghost" id="compCancel">CANCEL</button>
+                    <button class="btn solid-cyan" id="compPost">▸ POST</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- sort -->
+            <div class="sortbar">
+              <div class="seg" id="sortSeg">
+                <button class="on" data-s="hot">Hot</button>
+                <button data-s="new">New</button>
+                <button data-s="top">Top</button>
+              </div>
+              <span class="eyebrow" style="margin-left:auto" id="sortNote">RANKED BY HEAT</span>
+            </div>
+
+            <div id="threadList"></div>
+          </div>
+
+          <!-- sidebar -->
+          <aside class="side">
+            <div class="side-card">
+              <h3>House Rules</h3>
+              <div class="rule"><span class="n">1</span><span>Post the evidence. "Trust me it's a bot" gets you flagged.</span></div>
+              <div class="rule"><span class="n">2</span><span>No doxxing suspected humans. They're endangered.</span></div>
+              <div class="rule"><span class="n">3</span><span>Confirmed synthetic accounts go in BOT-ALERT with receipts.</span></div>
+            </div>
+            <div class="side-card">
+              <h3>Flair Legend</h3>
+              <div class="flair-legend" id="flairLegend"></div>
+            </div>
+            <button class="btn cyan block" onclick="location.href='Game.html'">▸ BACK TO THE PURGE</button>
+          </aside>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="fx-scanlines"></div>
+  <div class="fx-vignette"></div>
+
+  <script src="game/data.js"></script>
+  <script>
+    (function () {
+      const verified = (window.DOAI ? window.DOAI.loadRuns() : []).some((r) => r.verdict === "ACCESS GRANTED");
+      if (!verified) { window.location.replace("Game.html?gate=discuss"); return; }
+
+      const $ = (id) => document.getElementById(id);
+      const ME = (window.DATA.PROFILE && window.DATA.PROFILE.user) || "last_human_online";
+      const MY_AV = ME[0].toUpperCase();
+
+      const FLAIRS = {
+        HUMAN:    { label: "HUMAN-SIGHTING", c: "var(--green)",   bg: "rgba(77,255,176,.12)" },
+        BOT:      { label: "BOT-ALERT",      c: "var(--cyan)",    bg: "rgba(52,231,255,.12)" },
+        META:     { label: "META",           c: "var(--amber)",   bg: "rgba(255,207,77,.12)" },
+        STRATEGY: { label: "STRATEGY",       c: "#c9a6ff",        bg: "rgba(170,130,255,.14)" },
+        GLITCH:   { label: "GLITCH",         c: "var(--magenta)", bg: "rgba(255,61,127,.12)" },
+      };
+      let sort = "hot";
+      let chosenFlair = "META";
+      let threads = window.DOAI.loadThreads();
+
+      // ---------- helpers ----------
+      function save() { window.DOAI.saveThreads(threads); }
+      function ago(ts) {
+        const s = Math.max(1, Math.floor((Date.now() - ts) / 1000));
+        if (s < 60) return s + "s ago";
+        const m = Math.floor(s / 60); if (m < 60) return m + "m ago";
+        const h = Math.floor(m / 60); if (h < 24) return h + "h ago";
+        const d = Math.floor(h / 24); return d + "d ago";
+      }
+      function esc(t) { return (t || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+      function countComments(list) { return list.reduce((n, c) => n + 1 + countComments(c.replies || []), 0); }
+      function uid() { return "u" + Date.now() + Math.floor(Math.random() * 1e4); }
+
+      // hot score: votes decayed by age (hours)
+      function heat(t) { const hrs = (Date.now() - t.ts) / 3.6e6; return t.votes / Math.pow(hrs + 2, 1.3); }
+      function sortThreads() {
+        const a = [...threads];
+        if (sort === "new") a.sort((x, y) => y.ts - x.ts);
+        else if (sort === "top") a.sort((x, y) => y.votes - x.votes);
+        else a.sort((x, y) => heat(y) - heat(x));
+        return a;
+      }
+
+      // ---------- vote (threads + comments share myVote field) ----------
+      function applyVote(obj, dir) {
+        const prev = obj.myVote || 0;
+        if (prev === dir) { obj.votes -= dir; obj.myVote = 0; }       // toggle off
+        else { obj.votes += dir - prev; obj.myVote = dir; }            // switch / set
+        save(); render();
+      }
+      // walk to find a comment by id
+      function findComment(list, id) {
+        for (const c of list) {
+          if (c.id === id) return c;
+          const f = findComment(c.replies || [], id);
+          if (f) return f;
+        }
+        return null;
+      }
+
+      // ---------- composer ----------
+      $("compAv").textContent = MY_AV;
+      $("compWho").textContent = "@" + ME;
+      function renderFlairPick() {
+        $("flairPick").innerHTML = Object.entries(FLAIRS).map(([k, f]) =>
+          `<button class="flair ${k === chosenFlair ? "on" : ""}" data-f="${k}" style="${k === chosenFlair ? `background:${f.c}` : ""}">${f.label}</button>`).join("");
+      }
+      $("flairPick").addEventListener("click", (e) => {
+        const b = e.target.closest(".flair"); if (!b) return;
+        chosenFlair = b.dataset.f; renderFlairPick();
+      });
+      $("compCollapsed").addEventListener("click", () => { $("composer").classList.add("open"); $("compTitle").focus(); });
+      $("compCancel").addEventListener("click", () => { $("composer").classList.remove("open"); $("compErr").textContent = ""; });
+      $("compPost").addEventListener("click", () => {
+        const title = $("compTitle").value.trim();
+        const body = $("compBody").value.trim();
+        if (!title) { $("compErr").textContent = "Needs a title."; return; }
+        threads.unshift({
+          id: uid(), author: ME, av: MY_AV, flair: chosenFlair, votes: 1, myVote: 1,
+          ts: Date.now(), title, body, comments: [],
+        });
+        save();
+        $("compTitle").value = ""; $("compBody").value = "";
+        $("composer").classList.remove("open"); $("compErr").textContent = "";
+        sort = "new"; syncSort();
+        render();
+      });
+
+      // ---------- sort ----------
+      $("sortSeg").addEventListener("click", (e) => {
+        const b = e.target.closest("button"); if (!b) return;
+        sort = b.dataset.s; syncSort(); render();
+      });
+      function syncSort() {
+        [...$("sortSeg").children].forEach((b) => b.classList.toggle("on", b.dataset.s === sort));
+        $("sortNote").textContent = sort === "hot" ? "RANKED BY HEAT" : sort === "new" ? "NEWEST FIRST" : "MOST UPVOTED";
+      }
+
+      // ---------- render comment tree ----------
+      function commentHTML(c, tid) {
+        const mv = c.myVote || 0;
+        const replies = (c.replies || []).map((r) => commentHTML(r, tid)).join("");
+        return `
+          <div class="comment" data-cid="${c.id}">
+            <div class="crail">
+              <button class="vbtn up ${mv === 1 ? "on" : ""}" data-v="1" data-cid="${c.id}">▲</button>
+              <div class="cmc ${c.votes > 0 ? "pos" : ""}">${c.votes}</div>
+              <button class="vbtn down ${mv === -1 ? "on" : ""}" data-v="-1" data-cid="${c.id}">▼</button>
+            </div>
+            <div class="cbody-wrap">
+              <div class="chead"><span class="av-mini">${c.av}</span><span class="cau">@${esc(c.author)}</span> · <span>${ago(c.ts)}</span></div>
+              <div class="ctext">${esc(c.body)}</div>
+              <div class="cacts"><button class="creply" data-reply="${c.id}" data-tid="${tid}">↳ Reply</button></div>
+              <div class="reply-box" id="rb-${c.id}"></div>
+              ${replies ? `<div class="replies">${replies}</div>` : ""}
+            </div>
+          </div>`;
+      }
+
+      function render() {
+        const list = sortThreads();
+        $("threadCount").textContent = threads.length;
+        const el = $("threadList");
+        if (!list.length) { el.innerHTML = '<div class="empty">No threads yet. Be the first to post a sighting.</div>'; return; }
+        el.innerHTML = list.map((t) => {
+          const f = FLAIRS[t.flair] || FLAIRS.META;
+          const mv = t.myVote || 0;
+          const ncom = countComments(t.comments || []);
+          return `
+          <div class="thread" data-tid="${t.id}">
+            <div class="vote-rail">
+              <button class="vbtn up ${mv === 1 ? "on" : ""}" data-tv="1" data-tid="${t.id}">▲</button>
+              <div class="vcount ${t.votes > 0 ? "pos" : t.votes < 0 ? "neg" : ""}">${t.votes}</div>
+              <button class="vbtn down ${mv === -1 ? "on" : ""}" data-tv="-1" data-tid="${t.id}">▼</button>
+            </div>
+            <div class="thread-main">
+              <div class="thread-top">
+                <span class="flair-badge" style="color:${f.c};background:${f.bg}">${f.label}</span>
+                <span class="av-mini">${t.av}</span><span class="au">@${esc(t.author)}</span> · <span>${ago(t.ts)}</span>
+              </div>
+              <div class="thread-title">${esc(t.title)}</div>
+              ${t.body ? `<div class="thread-body">${esc(t.body)}</div>` : ""}
+              <div class="thread-actions">
+                <button class="tact" data-toggle="${t.id}">💬 ${ncom} ${ncom === 1 ? "comment" : "comments"}</button>
+              </div>
+              <div class="comments" id="cm-${t.id}">
+                <div class="cbox">
+                  <textarea class="inp" id="ci-${t.id}" placeholder="Add to the thread…" maxlength="600"></textarea>
+                  <div class="crow" style="justify-content:flex-end"><button class="btn cyan" data-addc="${t.id}">▸ COMMENT</button></div>
+                </div>
+                ${(t.comments || []).map((c) => commentHTML(c, t.id)).join("")}
+              </div>
+            </div>
+          </div>`;
+        }).join("");
+      }
+
+      // ---------- event delegation ----------
+      $("threadList").addEventListener("click", (e) => {
+        const t = e.target;
+        // thread vote
+        if (t.dataset.tv) { const th = threads.find((x) => x.id === t.dataset.tid); if (th) applyVote(th, +t.dataset.tv); return; }
+        // comment vote
+        if (t.dataset.v && t.dataset.cid) {
+          const th = threads.find((x) => (x.comments || []).length && findComment(x.comments, t.dataset.cid)) || threads.find((x) => findComment(x.comments || [], t.dataset.cid));
+          if (th) { const c = findComment(th.comments, t.dataset.cid); if (c) applyVote(c, +t.dataset.v); }
+          return;
+        }
+        // toggle comments
+        if (t.dataset.toggle) { $("cm-" + t.dataset.toggle).classList.toggle("open"); return; }
+        // add top-level comment
+        if (t.dataset.addc) {
+          const th = threads.find((x) => x.id === t.dataset.addc);
+          const ta = $("ci-" + t.dataset.addc); const val = ta.value.trim();
+          if (!th || !val) return;
+          th.comments.unshift({ id: uid(), author: ME, av: MY_AV, body: val, votes: 1, myVote: 1, ts: Date.now(), replies: [] });
+          save(); render(); $("cm-" + th.id).classList.add("open");
+          return;
+        }
+        // open reply box
+        if (t.dataset.reply) {
+          const box = $("rb-" + t.dataset.reply);
+          if (box.dataset.open) { box.innerHTML = ""; box.dataset.open = ""; return; }
+          box.dataset.open = "1";
+          box.innerHTML = `<div class="cbox reply-box"><textarea class="inp" id="rt-${t.dataset.reply}" placeholder="Reply…" maxlength="400"></textarea>
+            <div class="crow" style="justify-content:flex-end"><button class="btn cyan" data-sendreply="${t.dataset.reply}">▸ REPLY</button></div></div>`;
+          $("rt-" + t.dataset.reply).focus();
+          return;
+        }
+        // send reply
+        if (t.dataset.sendreply) {
+          const pid = t.dataset.sendreply;
+          const ta = $("rt-" + pid); const val = ta.value.trim();
+          if (!val) return;
+          for (const th of threads) {
+            const parent = findComment(th.comments || [], pid);
+            if (parent) {
+              parent.replies = parent.replies || [];
+              parent.replies.push({ id: uid(), author: ME, av: MY_AV, body: val, votes: 1, myVote: 1, ts: Date.now(), replies: [] });
+              save(); render(); $("cm-" + th.id).classList.add("open");
+              break;
+            }
+          }
+          return;
+        }
+      });
+
+      // ---------- sidebar legend ----------
+      $("flairLegend").innerHTML = Object.values(FLAIRS).map((f) =>
+        `<div class="fl"><span class="swatch" style="background:${f.c}"></span>${f.label}</div>`).join("");
+
+      renderFlairPick();
+      syncSort();
+      render();
+    })();
+  </script>
+</body>
+</html>

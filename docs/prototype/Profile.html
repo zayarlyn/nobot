@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NOBOT — Profile</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    /* ---- profile header ---- */
+    .pf-hero {
+      display: grid; grid-template-columns: auto 1fr auto; gap: 22px; align-items: center;
+      background: linear-gradient(180deg, var(--bg-1), var(--bg));
+      border: 1px solid var(--line-2); border-radius: var(--radius);
+      padding: 24px; margin-bottom: 22px; position: relative; overflow: hidden;
+    }
+    .pf-hero::before {
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(420px 200px at 88% -20%, rgba(52,231,255,.1), transparent 70%);
+    }
+    .pf-av {
+      width: 84px; height: 84px; border-radius: 50%; flex: none; display: grid; place-items: center;
+      font-family: var(--display); font-weight: 700; font-size: 34px; color: var(--green);
+      background: linear-gradient(135deg, var(--bg-3), var(--line-2)); border: 1px solid var(--green-d);
+      box-shadow: var(--green-glow);
+    }
+    .pf-id { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+    .pf-id .h { font-family: var(--display); font-weight: 700; font-size: clamp(22px, 4vw, 32px); letter-spacing: .01em; word-break: break-all; }
+    .pf-id .meta { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-faint); }
+    .badge {
+      font-size: 9px; letter-spacing: .14em; text-transform: uppercase; font-weight: 700;
+      padding: 5px 9px; border-radius: 999px; border: 1px solid; white-space: nowrap; display: inline-block;
+    }
+    .badge.survivor { color: var(--green); border-color: var(--green-d); background: rgba(77,255,176,.07); }
+    .badge.flagged { color: var(--amber); border-color: rgba(255,207,77,.5); background: rgba(255,207,77,.06); }
+    .badge.assimilated { color: var(--magenta); border-color: rgba(255,61,127,.5); background: rgba(255,61,127,.06); }
+    .badge.verified { color: var(--green); border-color: var(--green-d); background: rgba(77,255,176,.1); box-shadow: 0 0 8px rgba(77,255,176,.2); }
+
+    .pf-statstrip { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 22px; }
+    .card {
+      background: linear-gradient(180deg, var(--bg-1), var(--bg)); border: 1px solid var(--line);
+      border-radius: var(--radius); padding: 20px;
+    }
+    .card .ch { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
+    .card .ch .eyebrow { white-space: nowrap; }
+
+    /* game log — same vocabulary as leaderboard rows */
+    .log { display: flex; flex-direction: column; gap: 6px; }
+    .log-row {
+      display: grid; grid-template-columns: 78px 1fr 90px 96px 150px; align-items: center; gap: 14px;
+      background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 12px 16px; transition: .15s;
+    }
+    .log-row.head { background: none; border-color: transparent; padding-block: 0 2px; }
+    .log-row.head > * { font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--ink-faint); }
+    .log-row:not(.head):hover { border-color: var(--line-2); transform: translateX(3px); }
+    .log-mode { font-family: var(--display); font-weight: 700; font-size: 12px; letter-spacing: .1em; color: var(--ink-dim); }
+    .log-score { font-family: var(--display); font-weight: 700; font-size: 17px; color: var(--cyan); }
+    .log-acc { font-family: var(--display); font-size: 14px; }
+    .log-date { font-size: 11px; letter-spacing: .08em; color: var(--ink-faint); white-space: nowrap; }
+
+    @media (max-width: 760px) {
+      .pf-hero { grid-template-columns: auto 1fr; }
+      .pf-dis { grid-column: 1 / -1; text-align: left; }
+      .pf-statstrip { grid-template-columns: 1fr 1fr; }
+      .pf-grid { grid-template-columns: 1fr; }
+      .log-row { grid-template-columns: 64px 1fr auto; gap: 10px; }
+      .log-acc, .log-date { display: none; }
+      .log-row.head .log-acc, .log-row.head .log-date { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="app">
+
+      <header class="topbar">
+        <a class="brand" href="Game.html" style="text-decoration:none">
+          NOBOT
+        </a>
+        <nav class="nav">
+          <button onclick="location.href='Leaderboard.html'">Leaderboard</button>
+          <button onclick="location.href='Discuss.html'">Discuss</button>
+          <button class="active">Profile</button>
+          <button onclick="location.href='Contribute.html'">Contribute</button>
+        </nav>
+      </header>
+
+      <main class="screen wrap">
+
+        <div class="pf-hero">
+          <div class="pf-av" id="pfAv">L</div>
+          <div class="pf-id">
+            <div class="h" id="pfHandle">@last_human_online</div>
+            <div class="meta">
+              <span id="pfJoined">JOINED 2024</span>
+              <span id="pfRank">GLOBAL RANK #8</span>
+              <span class="badge" id="pfBadge">FLAGGED</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pf-statstrip" id="pfStats"></div>
+
+
+        <div class="card">
+          <div class="ch">
+            <div class="eyebrow">AUDIT HISTORY</div>
+            <div class="eyebrow faint" id="logCount">—</div>
+          </div>
+          <div class="log" id="logTable"></div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <div class="fx-scanlines"></div>
+  <div class="fx-vignette"></div>
+
+  <script src="game/data.js"></script>
+  <script>
+    (function () {
+      const P = window.DATA.PROFILE;
+      const runs = window.DOAI ? window.DOAI.loadRuns() : [];
+
+
+      function vClass(v) { return v === "SURVIVOR" ? "survivor" : v === "FLAGGED" ? "flagged" : "assimilated"; }
+
+      // ---- hero ----
+      document.getElementById("pfAv").textContent = P.av;
+      document.getElementById("pfHandle").textContent = "@" + P.user;
+      document.getElementById("pfJoined").textContent = P.joined;
+      const lastAcc = runs.length ? runs[0].acc : P.history[P.history.length - 1];
+      const verdict = lastAcc >= 80 ? "SURVIVOR" : lastAcc >= 60 ? "FLAGGED" : "ASSIMILATED";
+      const badge = document.getElementById("pfBadge");
+      badge.textContent = verdict; badge.className = "badge " + vClass(verdict);
+      const isVerified = runs.some((r) => r.verdict === "ACCESS GRANTED");
+      if (isVerified) {
+        const vBadge = document.createElement("span");
+        vBadge.className = "badge verified"; vBadge.textContent = "◉ VERIFIED HUMAN";
+        badge.parentNode.insertBefore(vBadge, badge);
+      }
+
+      // ---- stat strip ----
+      const realCount = runs.length;
+      const meRow = (window.DATA.LEADERBOARD || []).find((r) => r.you);
+      const localPosts = window.DOAI ? window.DOAI.loadSubs().length : 0;
+      const karma = (meRow ? meRow.karma : 0) + localPosts * 10;
+      document.getElementById("pfStats").innerHTML = `
+        <div class="stat"><div class="k">Karma</div><div class="v neon-green">${karma.toLocaleString("en-US")}</div></div>
+        <div class="stat"><div class="k">Sessions</div><div class="v">${P.log.length + realCount}</div></div>`;
+
+      // ---- game log (real runs first, then placeholder) ----
+      const realRows = runs.map((r) => ({
+        mode: r.mode || "PURGE", score: r.score, acc: r.acc,
+        verdict: (r.verdict === "ACCESS GRANTED" || r.verdict === "LAST HUMAN STANDING") ? "SURVIVOR"
+               : (r.verdict === "UNDER REVIEW" || r.verdict === "FLAGGED") ? "FLAGGED" : "ASSIMILATED",
+        date: r.date,
+      }));
+      const allRows = [...realRows, ...P.log];
+      document.getElementById("logCount").textContent = allRows.length + " SESSIONS";
+      const head = `<div class="log-row head"><div>Mode</div><div>Verdict</div><div>Score</div><div>Acc.</div><div>When</div></div>`;
+      const body = allRows.map((r) => `
+        <div class="log-row">
+          <div class="log-mode">${r.mode}</div>
+          <div><span class="badge ${vClass(r.verdict)}">${r.verdict}</span></div>
+          <div class="log-score">${(r.score || 0).toLocaleString("en-US")}</div>
+          <div class="log-acc ${r.acc > 80 ? "neon-green" : r.acc > 60 ? "" : "neon-mag"}">${r.acc}%</div>
+          <div class="log-date">${r.date}</div>
+        </div>`).join("");
+      document.getElementById("logTable").innerHTML = head + body;
+    })();
+  </script>
+</body>
+</html>

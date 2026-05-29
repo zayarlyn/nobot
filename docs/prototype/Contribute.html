@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NOBOT — Contribute</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    .cb-head { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+    .cb-title { font-family: var(--display); font-weight: 700; font-size: clamp(28px, 5.5vw, 46px); letter-spacing: .01em; line-height: 1; }
+    .cb-sub { color: var(--ink-dim); font-size: 13px; line-height: 1.6; max-width: 64ch; text-wrap: pretty; }
+
+    .cb-grid { display: grid; grid-template-columns: 1fr 380px; gap: 22px; align-items: start; }
+
+    .card {
+      background: linear-gradient(180deg, var(--bg-1), var(--bg)); border: 1px solid var(--line);
+      border-radius: var(--radius); padding: 22px;
+    }
+    .field { display: flex; flex-direction: column; gap: 7px; margin-bottom: 16px; }
+    .field label { font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--ink-faint); }
+    .field label .opt { color: var(--line-2); }
+    .inp, textarea.inp, select.inp {
+      font-family: var(--ui); font-size: 14px; color: var(--ink);
+      background: var(--bg-2); border: 1px solid var(--line-2); border-radius: var(--radius);
+      padding: 11px 13px; width: 100%; transition: .15s; resize: vertical;
+    }
+    .inp:focus { outline: none; border-color: var(--cyan-d); box-shadow: inset 0 0 14px rgba(52,231,255,.08); }
+    .inp::placeholder { color: var(--ink-faint); }
+    .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    .charcount { font-size: 10px; color: var(--ink-faint); text-align: right; letter-spacing: .1em; }
+
+    /* truth toggle */
+    .truth { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .truth button {
+      font-family: var(--ui); font-size: 13px; letter-spacing: .1em; text-transform: uppercase; cursor: pointer;
+      background: var(--bg-2); border: 1px solid var(--line-2); color: var(--ink-dim);
+      border-radius: var(--radius); padding: 15px 12px; display: flex; flex-direction: column; gap: 4px; align-items: center; transition: .15s;
+    }
+    .truth button .sub { font-size: 9px; letter-spacing: .14em; opacity: .7; }
+    .truth button.on.human { color: var(--green); border-color: var(--green-d); background: rgba(77,255,176,.08); box-shadow: inset 0 0 16px rgba(77,255,176,.12); }
+    .truth button.on.ai { color: var(--cyan); border-color: var(--cyan-d); background: rgba(52,231,255,.08); box-shadow: inset 0 0 16px rgba(52,231,255,.12); }
+
+
+    .form-actions { display: flex; gap: 10px; margin-top: 4px; }
+    .err { color: var(--magenta); font-size: 11px; letter-spacing: .08em; min-height: 14px; }
+
+    /* preview rail */
+    .rail { position: sticky; top: 76px; display: flex; flex-direction: column; gap: 14px; }
+    .rail .eyebrow { margin-bottom: 2px; }
+    .preview-truth { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; display: flex; align-items: center; gap: 7px; }
+    .preview-truth .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-faint); }
+    .preview-truth.human .dot { background: var(--green); box-shadow: var(--green-glow); }
+    .preview-truth.ai .dot { background: var(--cyan); box-shadow: var(--cyan-glow); }
+
+    /* submissions list */
+    .subs { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+    .sub-row {
+      display: grid; grid-template-columns: auto 1fr auto auto; gap: 12px; align-items: center;
+      background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--radius); padding: 11px 14px;
+    }
+    .sub-kind { font-size: 9px; letter-spacing: .14em; text-transform: uppercase; font-weight: 700; padding: 4px 8px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
+    .sub-kind.human { color: var(--green); border-color: var(--green-d); background: rgba(77,255,176,.07); }
+    .sub-kind.ai { color: var(--cyan); border-color: var(--cyan-d); background: rgba(52,231,255,.07); }
+    .sub-body { min-width: 0; }
+    .sub-body .t { font-size: 13px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sub-body .m { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-faint); margin-top: 2px; }
+    .sub-thumb { width: 36px; height: 36px; border-radius: var(--radius); object-fit: cover; border: 1px solid var(--line-2); }
+    .del-btn { background: none; border: 1px solid var(--line-2); color: var(--ink-dim); width: 30px; height: 30px; border-radius: var(--radius); cursor: pointer; font-size: 13px; transition: .15s; }
+    .del-btn:hover { color: var(--magenta); border-color: rgba(255,61,127,.5); }
+    .empty { color: var(--ink-faint); font-size: 12px; padding: 18px; text-align: center; border: 1px dashed var(--line); border-radius: var(--radius); }
+
+    .hide { display: none !important; }
+    @media (max-width: 860px) {
+      .cb-grid { grid-template-columns: 1fr; }
+      .rail { position: static; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="app">
+
+      <header class="topbar">
+        <a class="brand" href="Game.html" style="text-decoration:none">
+          NOBOT
+        </a>
+        <nav class="nav">
+          <button onclick="location.href='Leaderboard.html'">Leaderboard</button>
+          <button onclick="location.href='Discuss.html'">Discuss</button>
+          <button onclick="location.href='Profile.html'">Profile</button>
+          <button class="active">Contribute</button>
+        </nav>
+      </header>
+
+      <main class="screen wrap">
+        <div class="cb-head">
+          <div class="eyebrow neon-green">CITIZEN INTELLIGENCE · TRAINING DATA</div>
+          <h1 class="cb-title glitch" data-text="FEED THE AUDIT">FEED THE AUDIT</h1>
+          <p class="cb-sub">You are one of the last verified humans on this network. Keep the feed alive — add your voice. Every post you contribute gets planted in the server plaza for others to defend.</p>
+        </div>
+
+        <div class="cb-grid">
+          <!-- FORM -->
+          <div class="card">
+            <!-- shared: topic -->
+            <div class="field">
+              <label>Topic</label>
+              <select class="inp" id="fTopic">
+                <option>News</option><option>Sports</option><option>Politics</option><option>Pop Culture</option>
+              </select>
+            </div>
+
+            <!-- TEXT-ONLY -->
+            <div id="textBlock">
+              <div class="field">
+                <label>Post body</label>
+                <textarea class="inp" id="fBody" rows="4" maxlength="280" placeholder="Paste or write the post exactly as it appeared…"></textarea>
+                <div class="charcount"><span id="bodyCount">0</span>/280</div>
+              </div>
+            </div>
+
+
+
+            <div class="err" id="err"></div>
+            <div class="form-actions">
+              <button class="btn solid-green" id="submitBtn">▸ PLANT IN THE FEED</button>
+              <button class="btn" id="clearBtn">RESET</button>
+            </div>
+          </div>
+
+          <!-- PREVIEW RAIL -->
+          <aside class="rail">
+            <div>
+              <div class="eyebrow">LIVE PREVIEW · AS SEEN IN-GAME</div>
+              <div class="preview-truth" id="pvTruth"><span class="dot"></span><span id="pvTruthLbl">UNFLAGGED</span></div>
+            </div>
+            <div class="post" id="pvPost">
+              <div class="post-head">
+                <div class="avatar" id="pvAv">?</div>
+                <div class="post-meta">
+                  <div class="name" id="pvName">Display name</div>
+                  <div class="handle" id="pvHandle">@handle</div>
+                </div>
+              </div>
+<div class="post-body" id="pvBody" style="color:var(--ink-faint)">Your post body will appear here…</div>
+            </div>
+
+            <div>
+              <div class="eyebrow" style="margin-bottom:8px">YOUR SUBMISSIONS · <span id="subCount">0</span></div>
+              <div class="subs" id="subsList"></div>
+            </div>
+          </aside>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="fx-scanlines"></div>
+  <div class="fx-vignette"></div>
+
+  <script src="game/data.js"></script>
+  <script>
+    (function () {
+      const $ = (id) => document.getElementById(id);
+      const kind = "human";
+
+      // ---------- live preview ----------
+      const storedUser = (function() { try { return JSON.parse(localStorage.getItem("doai:user")); } catch(e) { return null; } })();
+      const myName = storedUser ? storedUser.username : "anonymous";
+      const myHandle = "@" + myName.toLowerCase().replace(/[^a-z0-9_]/g, "");
+      $("pvAv").textContent = (myName[0] || "?").toUpperCase();
+      $("pvName").textContent = myName;
+      $("pvHandle").textContent = myHandle;
+
+      function sync() {
+        const txt = $("fBody").value.trim();
+        const body = $("pvBody");
+        body.textContent = txt || "Your post body will appear here…";
+        body.style.color = txt ? "var(--ink)" : "var(--ink-faint)";
+        $("bodyCount").textContent = $("fBody").value.length;
+      }
+
+      ["fBody", "fTopic"].forEach((id) =>
+        $(id).addEventListener("input", sync));
+
+      function showErr(m) { $("err").textContent = m; }
+
+      // ---------- submit ----------
+      $("submitBtn").addEventListener("click", () => {
+        if (!$("fBody").value.trim()) return showErr("Add the post body.");
+
+        const sub = {
+          kind, topic: $("fTopic").value, name: myName,
+          handle: myHandle, av: (myName[0] || "?").toUpperCase(),
+          body: $("fBody").value.trim(),
+        };
+        try {
+          window.DOAI.addSub(sub);
+        } catch (err) {
+          return showErr("Storage full — delete some submissions and retry.");
+        }
+        resetForm();
+        renderSubs();
+        flashConfirm();
+      });
+
+      $("clearBtn").addEventListener("click", resetForm);
+      function resetForm() {
+        $("fBody").value = "";
+        showErr("");
+        sync();
+      }
+      function flashConfirm() {
+        const b = $("submitBtn"); const t = b.textContent;
+        b.textContent = "✓ PLANTED"; b.classList.add("glitch-burst");
+        setTimeout(() => { b.textContent = t; b.classList.remove("glitch-burst"); }, 1100);
+      }
+
+      // ---------- submissions list ----------
+      function renderSubs() {
+        const list = window.DOAI.loadSubs();
+        $("subCount").textContent = list.length;
+        const el = $("subsList");
+        if (!list.length) { el.innerHTML = '<div class="empty">No submissions yet. The feed only has the default population.</div>'; return; }
+        el.innerHTML = list.map((s) => `
+          <div class="sub-row">
+            <span class="sub-kind ${s.kind}">${s.kind === "human" ? "HUMAN" : "AI"}</span>
+            ${s.img ? `<img class="sub-thumb" src="${s.img}" alt="" style="grid-row:1;order:-1;width:36px" />` : ""}
+            <div class="sub-body">
+              <div class="t">${(s.body || (s.img ? "[image post]" : "")) .replace(/</g, "&lt;")}</div>
+              <div class="m">${s.handle} · ${s.topic}</div>
+            </div>
+            <button class="del-btn" data-id="${s.id}" title="Remove">✕</button>
+          </div>`).join("");
+        el.querySelectorAll(".del-btn").forEach((b) =>
+          b.addEventListener("click", () => { window.DOAI.removeSub(b.dataset.id); renderSubs(); }));
+      }
+
+      sync();
+      renderSubs();
+    })();
+  </script>
+</body>
+</html>

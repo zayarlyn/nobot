@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique
+  passwordHash String
+  isVerified   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  games    Game[]
+  posts    Post[]
+  threads  Thread[]
+  comments Comment[]
+  votes    Vote[]
+
+  @@map("users")
+}
+
+model Game {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  user         User     @relation(fields: [userId], references: [id])
+  score        Int
+  accuracy     Int
+  verdict      String
+  streak       Int      @default(0)
+  purgedBots   Int      @default(0)
+  savedHumans  Int      @default(0)
+  killedHumans Int      @default(0)
+  escapedBots  Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  @@map("games")
+}
+
+model Post {
+  id         Int      @id @default(autoincrement())
+  authorId   Int?
+  author     User?    @relation(fields: [authorId], references: [id])
+  source     String   // USER | AI
+  kind       String   // human | ai
+  name       String
+  handle     String
+  avatar     String
+  body       String?
+  imageUrl   String?
+  topic      String
+  tells       String   // JSON string[] — bullet-point hints shown on reveal
+  explanation String?  // prose explanation shown on wrong guess — why this is likely AI or human
+  isApproved  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@map("posts")
+}
+
+model Thread {
+  id        Int      @id @default(autoincrement())
+  authorId  Int
+  author    User     @relation(fields: [authorId], references: [id])
+  flair     String   // HUMAN | BOT | META | STRATEGY | GLITCH
+  title     String
+  body      String?
+  createdAt DateTime @default(now())
+
+  comments Comment[]
+  votes    Vote[]
+
+  @@map("threads")
+}
+
+model Comment {
+  id        Int       @id @default(autoincrement())
+  authorId  Int
+  author    User      @relation(fields: [authorId], references: [id])
+  threadId  Int
+  thread    Thread    @relation(fields: [threadId], references: [id])
+  parentId  Int?
+  parent    Comment?  @relation("replies", fields: [parentId], references: [id])
+  replies   Comment[] @relation("replies")
+  body      String
+  createdAt DateTime  @default(now())
+
+  votes Vote[]
+
+  @@map("comments")
+}
+
+model Vote {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  threadId  Int?
+  commentId Int?
+  value     Int      // +1 | -1
+  user      User     @relation(fields: [userId], references: [id])
+  thread    Thread?  @relation(fields: [threadId], references: [id])
+  comment   Comment? @relation(fields: [commentId], references: [id])
+
+  @@unique([userId, threadId])
+  @@unique([userId, commentId])
+  @@map("votes")
+}

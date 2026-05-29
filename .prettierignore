@@ -1,0 +1,7 @@
+node_modules
+dist
+build
+coverage
+*.db
+prisma/migrations
+apps/web/src/common/components/ui
