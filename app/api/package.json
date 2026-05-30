@@ -4,10 +4,10 @@
   "scripts": {
     "dev": "ts-node-dev -r tsconfig-paths/register src/index.ts",
     "build": "tsc",
-    "db:migrate": "prisma migrate dev",
+    "db:migrate": "set HTTP_PROXY=&& set HTTPS_PROXY=&& set ALL_PROXY=&& set GIT_HTTP_PROXY=&& set GIT_HTTPS_PROXY=&& prisma migrate dev",
     "db:seed": "ts-node prisma/seed.ts",
-    "db:studio": "prisma studio",
-    "db:generate": "prisma generate"
+    "db:studio": "set HTTP_PROXY=&& set HTTPS_PROXY=&& set ALL_PROXY=&& set GIT_HTTP_PROXY=&& set GIT_HTTPS_PROXY=&& prisma studio",
+    "db:generate": "set HTTP_PROXY=&& set HTTPS_PROXY=&& set ALL_PROXY=&& set GIT_HTTP_PROXY=&& set GIT_HTTPS_PROXY=&& prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",
