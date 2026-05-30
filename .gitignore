@@ -7,6 +7,7 @@ dist/
 # env files
 .env
 .env.local
+.env.example
 
 # database
 *.db
@@ -24,3 +25,6 @@ app/api/src/generated/
 # IDE
 .vscode/
 .idea/
+
+./api/.env.example
+./web/.env.example
