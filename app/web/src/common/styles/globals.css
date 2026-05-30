@@ -614,8 +614,11 @@ body {
   .cb-grid {
     grid-template-columns: 1fr;
   }
+  .cb-grid > .card,
   .rail {
-    position: static !important;
+    position: static;
+    max-height: none;
+    overflow-y: visible;
   }
 }
 
@@ -686,10 +689,17 @@ select.inp:focus {
 /* preview rail */
 .rail {
   position: sticky;
-  top: 76px;
+  top: 56px;
+  max-height: calc(100vh - 56px - 20px);
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.cb-grid > .card {
+  position: sticky;
+  top: 56px;
 }
 
 /* submissions list */
