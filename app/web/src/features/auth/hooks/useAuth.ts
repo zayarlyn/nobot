@@ -4,13 +4,13 @@ import { useAuthStore } from '../../../common/store/authStore';
 export function useAuth() {
   const { user, setUser } = useAuthStore();
 
-  async function register(username: string, password: string) {
-    const { data } = await api.post('/auth/register', { username, password });
+  async function authorize(username: string, password: string) {
+    const { data } = await api.post('/auth/authorize', { username, password });
     setUser(data.data);
   }
 
-  async function login(username: string, password: string) {
-    const { data } = await api.post('/auth/login', { username, password });
+  async function refreshUser() {
+    const { data } = await api.get('/auth/me');
     setUser(data.data);
   }
 
@@ -19,5 +19,5 @@ export function useAuth() {
     setUser(null);
   }
 
-  return { user, register, login, logout };
+  return { user, authorize, refreshUser, logout };
 }
