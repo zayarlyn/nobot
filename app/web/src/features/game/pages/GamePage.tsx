@@ -9,7 +9,6 @@ import { W } from '../world';
 
 interface ApiPost {
   id: number;
-  kind: string;
   name: string;
   handle: string;
   avatar: string;
@@ -22,7 +21,7 @@ interface ApiPost {
 const DEFAULT_HUD: HudData = { integrity: 70, integrityClass: 'good', streak: 0, processed: 0, total: 0 };
 
 export default function GamePage() {
-  const { getPosts, saveGame } = useGame();
+  const { getPosts, decide, saveGame } = useGame();
   const { authorize, refreshUser, user } = useAuth();
   const navigate = useNavigate();
 
@@ -70,7 +69,7 @@ export default function GamePage() {
   useEffect(() => {
     if (!canvasRef.current || !stageRef.current) return;
 
-    const { cleanup, actions } = initEngine(canvasRef.current, stageRef.current, () => loadedPosts.current, {
+    const { cleanup, actions } = initEngine(canvasRef.current, stageRef.current, () => loadedPosts.current, decide, {
       onHudChange: setHud,
       onDialogOpen: setDialog,
       onDialogClose: () => setDialog(null),
@@ -99,20 +98,14 @@ export default function GamePage() {
       .then((raw: ApiPost[]) => {
         if (!Array.isArray(raw)) return;
         loadedPosts.current = raw.map((p) => ({
-          kind: p.kind as 'human' | 'ai',
+          id: p.id,
           name: p.name,
           handle: p.handle,
           av: p.avatar,
           body: p.body,
           imageUrl: p.imageUrl,
           topic: p.topic,
-          tells: (() => {
-            try {
-              return JSON.parse(p.tells);
-            } catch {
-              return [];
-            }
-          })(),
+          tells: (() => { try { return JSON.parse(p.tells); } catch { return []; } })(),
         }));
       })
       .catch(() => {});

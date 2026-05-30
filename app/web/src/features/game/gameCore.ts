@@ -5,6 +5,12 @@ import {
 } from './world';
 import { sounds } from './sound';
 
+export type DecideFn = (postId: number, action: 'spare' | 'purge' | 'flag') => Promise<{
+  correct: boolean | null;
+  kind: 'human' | 'ai';
+  tells: string[];
+}>;
+
 // ── shared types ────────────────────────────────────────────────────────────
 
 export interface Monitor extends MonitorPost {
@@ -98,7 +104,7 @@ interface GameState {
   flags: number; processed: number; total: number;
 }
 
-export function createGameCore(getPosts: () => MonitorPost[], cb: CoreCallbacks) {
+export function createGameCore(getPosts: () => MonitorPost[], decideFn: DecideFn, cb: CoreCallbacks) {
   let racks: Rack[] = [];
   let grid: number[][] = [];
   let phase = 'intro';
@@ -291,22 +297,30 @@ export function createGameCore(getPosts: () => MonitorPost[], cb: CoreCallbacks)
 
         game!.integrity = Math.max(0, game!.integrity - 8);
         game!.processed++;
-        if (timedOut.kind === 'ai') game!.escapedBots++;
-        else game!.killedHumans++;
         emitHud();
         current = null; phase = 'reveal';
         cb.onDialogClose();
 
-        const tells = timedOut.tells?.length ? timedOut.tells
-          : [timedOut.kind === 'ai' ? 'Community-submitted as AI — no fingerprint notes provided.' : 'Community-submitted as human — no fingerprint notes provided.'];
-        cb.onRevealShow({
-          verdict: 'TIME OUT',
-          verdictClass: 'neon-mag',
-          truthKind: timedOut.kind === 'ai' ? 'AI / SYNTHETIC' : 'HUMAN / ORGANIC',
-          truthClass: timedOut.kind === 'ai' ? 'neon-cyan' : 'neon-green',
-          delta: '−8 INTEGRITY',
-          deltaClass: 'neon-mag',
-          tells,
+        // fetch kind from server so reveals are still accurate on timeout
+        decideFn(timedOut.id, 'flag').then((verdict) => {
+          const kind = verdict.kind;
+          if (kind === 'ai') game!.escapedBots++; else game!.killedHumans++;
+          timedOut.state = 'spared'; timedOut.correct = false; timedOut.action = 'timeout';
+          const tells = verdict.tells.length ? verdict.tells
+            : [kind === 'ai' ? 'Community-submitted as AI — no fingerprint notes provided.' : 'Community-submitted as human — no fingerprint notes provided.'];
+          cb.onRevealShow({
+            verdict: 'TIME OUT', verdictClass: 'neon-mag',
+            truthKind: kind === 'ai' ? 'AI / SYNTHETIC' : 'HUMAN / ORGANIC',
+            truthClass: kind === 'ai' ? 'neon-cyan' : 'neon-green',
+            delta: '−8 INTEGRITY', deltaClass: 'neon-mag', tells,
+          });
+        }).catch(() => {
+          cb.onRevealShow({
+            verdict: 'TIME OUT', verdictClass: 'neon-mag',
+            truthKind: 'UNKNOWN', truthClass: '',
+            delta: '−8 INTEGRITY', deltaClass: 'neon-mag',
+            tells: ['Connection lost — could not retrieve fingerprint.'],
+          });
         });
         dialogTimeout = null;
       }, DIALOG_LIMIT);
@@ -317,11 +331,16 @@ export function createGameCore(getPosts: () => MonitorPost[], cb: CoreCallbacks)
       phase = 'explore'; current = null; cb.onDialogClose();
     },
 
-    decide(action: 'spare' | 'purge' | 'flag') {
+    async decide(action: 'spare' | 'purge' | 'flag') {
       if (!current || !game) return;
       if (dialogTimeout) { clearTimeout(dialogTimeout); dialogTimeout = null; }
       const n = current;
+      current = null;
+      cb.onDialogClose();
+
       let correct: boolean | null = null;
+      let kind: 'human' | 'ai' = 'human';
+      let tells: string[] = [];
       let big = '', bigClass = '', deltaTxt = '', deltaClass = '';
 
       if (action === 'flag') {
@@ -329,7 +348,13 @@ export function createGameCore(getPosts: () => MonitorPost[], cb: CoreCallbacks)
         sounds.flag();
         big = 'FLAGGED'; bigClass = ''; deltaTxt = 'NO CHANGE'; deltaClass = 'muted';
       } else {
-        correct = (action === 'purge' && n.kind === 'ai') || (action === 'spare' && n.kind === 'human');
+        try {
+          const verdict = await decideFn(n.id, action);
+          correct = verdict.correct; kind = verdict.kind; tells = verdict.tells;
+        } catch {
+          // network failure — treat as wrong to avoid granting free passes
+          correct = false; kind = 'ai'; tells = [];
+        }
         n.correct = correct; n.action = action;
         if (action === 'purge') { n.state = 'purged'; n.targetScale = 0.82; burst(n.x, n.y, correct ? '#34e7ff' : '#ff3d7f'); }
         else { n.state = 'spared'; n.targetScale = 1; }
@@ -338,7 +363,7 @@ export function createGameCore(getPosts: () => MonitorPost[], cb: CoreCallbacks)
           game.correct++; game.streak++; game.best = Math.max(game.best, game.streak);
           game.score += 100 + game.streak * 10;
           game.integrity = Math.min(100, game.integrity + 6);
-          if (n.kind === 'ai') { game.purgedBots++; big = 'BOT TERMINATED'; }
+          if (kind === 'ai') { game.purgedBots++; big = 'BOT TERMINATED'; }
           else { game.savedHumans++; big = 'HUMAN VERIFIED'; }
           bigClass = 'neon-green'; deltaTxt = '+6 INTEGRITY'; deltaClass = 'neon-green';
         } else {
@@ -352,19 +377,15 @@ export function createGameCore(getPosts: () => MonitorPost[], cb: CoreCallbacks)
       }
       game.processed++;
       emitHud();
-      cb.onDialogClose();
-      current = null;
+      phase = 'reveal';
 
       if (correct) {
-        phase = 'reveal';
         cb.onPopupShow({ verdict: big, verdictClass: bigClass, delta: deltaTxt, deltaClass, worldX: n.x, worldY: n.y - 30 });
         if (popupTimer) clearTimeout(popupTimer);
         popupTimer = setTimeout(advanceAfterPopup, 1200);
       } else {
-        phase = 'reveal';
-        const tells = n.tells?.length ? n.tells
-          : [n.kind === 'ai' ? 'Community-submitted as AI — no fingerprint notes provided.' : 'Community-submitted as human — no fingerprint notes provided.'];
-        cb.onRevealShow({ verdict: big, verdictClass: bigClass, truthKind: n.kind === 'ai' ? 'AI / SYNTHETIC' : 'HUMAN / ORGANIC', truthClass: n.kind === 'ai' ? 'neon-cyan' : 'neon-green', delta: deltaTxt, deltaClass, tells });
+        const fallback = kind === 'ai' ? 'Community-submitted as AI — no fingerprint notes provided.' : 'Community-submitted as human — no fingerprint notes provided.';
+        cb.onRevealShow({ verdict: big, verdictClass: bigClass, truthKind: kind === 'ai' ? 'AI / SYNTHETIC' : 'HUMAN / ORGANIC', truthClass: kind === 'ai' ? 'neon-cyan' : 'neon-green', delta: deltaTxt, deltaClass, tells: tells.length ? tells : [fallback] });
       }
     },
 

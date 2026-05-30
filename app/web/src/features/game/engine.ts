@@ -1,5 +1,5 @@
 import { MonitorPost } from './world';
-import { createGameCore, CoreCallbacks, GameStats } from './gameCore';
+import { createGameCore, CoreCallbacks, DecideFn, GameStats } from './gameCore';
 import { createRenderer } from './renderer';
 import { createInputHandler } from './inputHandler';
 
@@ -20,9 +20,10 @@ export function initEngine(
   canvas: HTMLCanvasElement,
   wrap: Element,
   getPosts: () => MonitorPost[],
+  decideFn: DecideFn,
   callbacks: CoreCallbacks,
 ): { cleanup: () => void; actions: CoreActions } {
-  const core = createGameCore(getPosts, callbacks);
+  const core = createGameCore(getPosts, decideFn, callbacks);
   const renderer = createRenderer(canvas);
   const input = createInputHandler(core, wrap);
 
