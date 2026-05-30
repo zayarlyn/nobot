@@ -462,6 +462,90 @@ async function main() {
   });
 
   console.log('Seeded 10 posts (5 AI, 5 human)');
+
+  const hash = (pw: string) => bcrypt.hashSync(pw, 10);
+
+  const hunter = await prisma.user.create({
+    data: { username: 'hunter99', passwordHash: hash('password123'), isVerified: true },
+  });
+  const zayar = await prisma.user.create({
+    data: { username: 'zayarlyn', passwordHash: hash('password123'), isVerified: true },
+  });
+  await prisma.user.create({
+    data: { username: 'newbie', passwordHash: hash('password123'), isVerified: false },
+  });
+
+  console.log('Seeded users');
+
+  const thread1 = await prisma.thread.create({
+    data: {
+      authorId: hunter.id,
+      flair: 'HUMAN',
+      title: 'Anyone notice the bot typing patterns? They always add unnecessary filler',
+      body: 'Every time I see "certainly!" or "absolutely!" at the start of a reply I immediately flag it. No human talks like that in casual conversation.',
+      createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000), // 3h ago
+    },
+  });
+
+  const thread2 = await prisma.thread.create({
+    data: {
+      authorId: zayar.id,
+      flair: 'BOT',
+      title: 'Bot farm spotted — 12 accounts all posting identical "personal stories"',
+      body: 'Same story structure, same emotional arc, different usernames. Classic coordinated inauthentic behaviour.',
+      createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000), // 5h ago
+    },
+  });
+
+  await prisma.thread.create({
+    data: {
+      authorId: hunter.id,
+      flair: 'STRATEGY',
+      title: 'Strategy: check the account age before engaging with suspicious posts',
+      body: 'Accounts created in the last 30 days with 500+ posts are almost always bots. Age + volume is the fastest tell.',
+      createdAt: new Date(Date.now() - 50 * 60 * 60 * 1000), // 50h ago — DEAD THREAD
+    },
+  });
+
+  await prisma.thread.create({
+    data: {
+      authorId: zayar.id,
+      flair: 'META',
+      title: 'META: should we have a dedicated bot-report channel?',
+      createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2h ago
+    },
+  });
+
+  console.log('Seeded threads');
+
+  await prisma.comment.createMany({
+    data: [
+      {
+        authorId: zayar.id,
+        threadId: thread1.id,
+        body: 'Exactly! They always say "certainly" and "I understand your concern" — no real person talks like that.',
+        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+      },
+      {
+        authorId: hunter.id,
+        threadId: thread1.id,
+        body: 'The triple exclamation mark is another big one. Bots LOVE enthusiasm.',
+        createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000),
+      },
+    ],
+  });
+
+  console.log('Seeded comments');
+
+  await prisma.vote.createMany({
+    data: [
+      { userId: zayar.id, threadId: thread1.id, value: 1 },
+      { userId: hunter.id, threadId: thread2.id, value: 1 },
+      { userId: zayar.id, threadId: thread2.id, value: 1 },
+    ],
+  });
+
+  console.log('Seeded votes');
 }
 
 main()
