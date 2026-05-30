@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { useAuth } from '../../auth/hooks/useAuth';
 import { useContribute } from '../hooks/useContribute';
 import Avatar from '../../../common/components/Avatar';
@@ -19,6 +20,7 @@ interface Submission {
 
 export default function ContributePage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { submitPost, getPendingPosts, deletePost } = useContribute();
 
   const [topic, setTopic] = useState<string>(TOPICS[0]);
@@ -27,7 +29,11 @@ export default function ContributePage() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const name = user?.username ?? 'anonymous';
+  useEffect(() => {
+    if (!user) navigate({ to: '/login' });
+  }, [user, navigate]);
+
+  const name = user?.username ?? '';
   const handle = '@' + name.toLowerCase().replace(/[^a-z0-9_]/g, '');
   const avatar = name ? name[0].toUpperCase() : '?';
 
@@ -76,6 +82,8 @@ export default function ContributePage() {
     await deletePost(id);
     await fetchSubmissions();
   }
+
+  if (!user) return null;
 
   return (
     <>
