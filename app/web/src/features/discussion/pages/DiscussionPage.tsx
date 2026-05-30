@@ -49,7 +49,7 @@ function heat(t: Thread) {
 }
 
 export default function DiscussionPage() {
-  const { getThreads } = useDiscussion();
+  const { getThreads, vote } = useDiscussion();
   const { user } = useAuth();
 
   const [threads, setThreads] = useState<Thread[]>([]);
@@ -57,6 +57,7 @@ export default function DiscussionPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<SortMode>('hot');
   const [openReplyId, setOpenReplyId] = useState<number | null>(null);
+  const [threadVotes, setThreadVotes] = useState<Record<number, 1 | -1 | 0>>({});
 
   useEffect(() => {
     let mounted = true;
@@ -96,6 +97,20 @@ export default function DiscussionPage() {
     setOpenReplyId(null);
   }
 
+  async function handleVote(threadId: number, value: 1 | -1) {
+    const prev = threadVotes[threadId] ?? 0;
+    const next = (prev === value ? 0 : value) as 1 | -1 | 0;
+    const delta = next - prev;
+    setThreadVotes((v) => ({ ...v, [threadId]: next }));
+    setThreads((ts) => ts.map((t) => t.id === threadId ? { ...t, voteTotal: t.voteTotal + delta } : t));
+    try {
+      await vote({ threadId, value });
+    } catch {
+      setThreadVotes((v) => ({ ...v, [threadId]: prev as 1 | -1 | 0 }));
+      setThreads((ts) => ts.map((t) => t.id === threadId ? { ...t, voteTotal: t.voteTotal - delta } : t));
+    }
+  }
+
   function handleThreadPosted(raw: any) {
     const thread: Thread = {
       ...raw, voteTotal: 0, commentCount: 0,
@@ -105,6 +120,7 @@ export default function DiscussionPage() {
   }
 
   return (
+    <>
     <main className="screen wrap">
       <div className="dc-head">
         <div className="eyebrow neon-cyan">COMMUNITY · r/nobot</div>
@@ -122,7 +138,7 @@ export default function DiscussionPage() {
 
       <div className="dc-layout">
         <div>
-          {user?.isVerified && <ThreadComposer onPosted={handleThreadPosted} />}
+          <ThreadComposer onPosted={handleThreadPosted} />
 
           <div className="scanner">
             <label>ACTIVATE SCANNER</label>
@@ -167,6 +183,8 @@ export default function DiscussionPage() {
               thread={thread}
               searchQuery={searchQuery}
               isReplyOpen={openReplyId === thread.id}
+              myVote={threadVotes[thread.id] ?? 0}
+              onVote={(v) => handleVote(thread.id, v)}
               onToggleReply={() => handleToggleReply(thread.id)}
               onReplyPosted={(comment) => handleReplyPosted(thread.id, comment)}
             />
@@ -195,5 +213,8 @@ export default function DiscussionPage() {
         </aside>
       </div>
     </main>
+    <div className="fx-scanlines" />
+    <div className="fx-vignette" />
+    </>
   );
 }

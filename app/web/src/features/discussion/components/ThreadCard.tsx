@@ -34,11 +34,13 @@ interface ThreadCardProps {
   thread: Thread;
   searchQuery: string;
   isReplyOpen: boolean;
+  myVote: 1 | -1 | 0;
+  onVote: (value: 1 | -1) => void;
   onToggleReply: () => void;
   onReplyPosted: (comment: PreviewComment) => void;
 }
 
-export default function ThreadCard({ thread, searchQuery, isReplyOpen, onToggleReply, onReplyPosted }: ThreadCardProps) {
+export default function ThreadCard({ thread, searchQuery, isReplyOpen, myVote, onVote, onToggleReply, onReplyPosted }: ThreadCardProps) {
   const dead = isDeadThread(thread.lastActivityAt);
   const flair = FLAIR_DATA[thread.flair];
   const voteClass = thread.voteTotal > 0 ? 'pos' : thread.voteTotal < 0 ? 'neg' : '';
@@ -46,9 +48,9 @@ export default function ThreadCard({ thread, searchQuery, isReplyOpen, onToggleR
   return (
     <div className={`thread${dead ? ' dead' : ''}`}>
       <div className="vote-rail">
-        <button className="vbtn up">▲</button>
+        <button className={`vbtn up${myVote === 1 ? ' on' : ''}`} onClick={() => onVote(1)}>▲</button>
         <div className={`vcount ${voteClass}`}>{thread.voteTotal}</div>
-        <button className="vbtn down">▼</button>
+        <button className={`vbtn down${myVote === -1 ? ' on' : ''}`} onClick={() => onVote(-1)}>▼</button>
       </div>
 
       <div className="thread-main">
