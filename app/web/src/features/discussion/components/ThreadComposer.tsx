@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import axios from 'axios';
 import { useDiscussion } from '../hooks/useDiscussion';
 import { useAuth } from '../../auth/hooks/useAuth';
 
@@ -45,7 +46,12 @@ export default function ThreadComposer({ onPosted }: ThreadComposerProps) {
       const thread = await createThread({ flair, title: title.trim(), body: body.trim() || undefined });
       onPosted(thread);
       setTitle(''); setBody(''); setOpen(false);
-    } catch {
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const status = err.response?.status;
+        if (status === 401) { setError('LOG IN TO POST'); return; }
+        if (status === 403) { setError('COMPLETE THE GAME TO UNLOCK POSTING'); return; }
+      }
       setError('TRANSMISSION FAILED');
     } finally {
       setSubmitting(false);
