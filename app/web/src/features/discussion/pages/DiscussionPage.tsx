@@ -209,7 +209,7 @@ export default function DiscussionPage() {
               ))}
             </div>
           </div>
-          <a href="/" className="btn cyan block">▸ BACK TO THE PURGE</a>
+
         </aside>
       </div>
     </main>

@@ -261,9 +261,6 @@ export default function GamePage() {
                   <span className="neon-cyan">⌖</span> SUBMITTED · <span>{dialog.topic}</span>
                   {dialog.custom && <span className="srctag">· COMMUNITY</span>}
                 </div>
-                <button className="closex" onClick={() => actionsRef.current?.closeDialog()}>
-                  ✕
-                </button>
               </div>
               <div className="post">
                 <div className="post-head">
