@@ -10,22 +10,18 @@ import LeaderboardPage from './features/profile/pages/LeaderboardPage';
 
 const rootRoute = createRootRoute({ component: App });
 
+function requireGamePassed() {
+  const { user, hydrated } = useAuthStore.getState();
+  if (!hydrated) return; // still loading; router.invalidate() will re-run after hydration
+  if (!user || !sessionStorage.getItem('gamePassed')) throw redirect({ to: '/' });
+}
+
 const loginRoute      = createRoute({ getParentRoute: () => rootRoute, path: '/login',       component: LoginPage });
 const gameRoute       = createRoute({ getParentRoute: () => rootRoute, path: '/',            component: GamePage });
-const contributeRoute = createRoute({ getParentRoute: () => rootRoute, path: '/contribute',  component: ContributePage });
-const discussionRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/discuss',
-  component: DiscussionPage,
-  beforeLoad: () => {
-    const user = useAuthStore.getState().user;
-    if (!user?.isVerified) {
-      throw redirect({ to: '/', search: { gate: 'discuss' } });
-    }
-  },
-});
-const profileRoute    = createRoute({ getParentRoute: () => rootRoute, path: '/profile',     component: ProfilePage });
-const leaderboardRoute = createRoute({ getParentRoute: () => rootRoute, path: '/leaderboard', component: LeaderboardPage });
+const contributeRoute = createRoute({ getParentRoute: () => rootRoute, path: '/contribute',  component: ContributePage, beforeLoad: requireGamePassed });
+const discussionRoute = createRoute({ getParentRoute: () => rootRoute, path: '/discuss',     component: DiscussionPage, beforeLoad: requireGamePassed });
+const profileRoute    = createRoute({ getParentRoute: () => rootRoute, path: '/profile',     component: ProfilePage,    beforeLoad: requireGamePassed });
+const leaderboardRoute = createRoute({ getParentRoute: () => rootRoute, path: '/leaderboard', component: LeaderboardPage, beforeLoad: requireGamePassed });
 
 const routeTree = rootRoute.addChildren([
   loginRoute, gameRoute, contributeRoute, discussionRoute, profileRoute, leaderboardRoute,

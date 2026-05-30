@@ -22,7 +22,7 @@ const DEFAULT_HUD: HudData = { integrity: 70, integrityClass: 'good', streak: 0,
 
 export default function GamePage() {
   const { getPosts, decide, saveGame } = useGame();
-  const { authorize, refreshUser, user } = useAuth();
+  const { authorize, user } = useAuth();
   const navigate = useNavigate();
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -32,22 +32,20 @@ export default function GamePage() {
   const pendingStats = useRef<GameStats | null>(null);
 
   const [gameStarted, setGameStarted] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
+  const [authUsername, setAuthUsername] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
   const [hud, setHud] = useState<HudData>(DEFAULT_HUD);
   const [dialog, setDialog] = useState<DialogData | null>(null);
   const [popup, setPopup] = useState<PopupData | null>(null);
   const [reveal, setReveal] = useState<RevealData | null>(null);
   const [results, setResults] = useState<ResultsData | null>(null);
   const [scanPos, setScanPos] = useState<{ x: number; y: number } | null>(null);
-  const [showAuth, setShowAuth] = useState(false);
-  const [authUsername, setAuthUsername] = useState('');
-  const [authPassword, setAuthPassword] = useState('');
-  const [authError, setAuthError] = useState('');
-  const [authLoading, setAuthLoading] = useState(false);
   const [popupKey, setPopupKey] = useState(0);
   const [scoreKey, setScoreKey] = useState(0);
   const [timerFraction, setTimerFraction] = useState(1);
-
-  const gateNotice = new URLSearchParams(window.location.search).get('gate') === 'discuss';
 
   useEffect(() => {
     if (!dialog) { setTimerFraction(1); return; }
@@ -124,23 +122,17 @@ export default function GamePage() {
 
   async function handleAuthSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!authUsername.trim()) {
-      setAuthError('Enter a username.');
-      return;
-    }
-    if (!authPassword) {
-      setAuthError('Enter a password.');
-      return;
-    }
+    if (!authUsername.trim()) { setAuthError('Enter a username.'); return; }
+    if (!authPassword) { setAuthError('Enter a password.'); return; }
     setAuthLoading(true);
     setAuthError('');
     try {
       await authorize(authUsername.trim(), authPassword);
       if (pendingStats.current) await saveGame(pendingStats.current).catch(() => {});
-      await refreshUser();
+      sessionStorage.setItem('gamePassed', '1');
       navigate({ to: '/discuss' });
     } catch (err: unknown) {
-      const ax = err as { response?: { status?: number; data?: { message?: string } } };
+      const ax = err as { response?: { data?: { message?: string } } };
       setAuthError(ax?.response?.data?.message ?? 'Something went wrong.');
     } finally {
       setAuthLoading(false);
@@ -231,11 +223,6 @@ export default function GamePage() {
           <div className="overlay open">
             <div className="gpanel wide">
               <div className="eyebrow">HUMAN VERIFICATION PROTOCOL</div>
-              {gateNotice && (
-                <div style={{ fontSize: 12, letterSpacing: '.1em', color: 'var(--magenta)', marginBottom: 6 }}>
-                  ⚠ ACCESS DENIED — verify your humanity to enter the Discussion forum.
-                </div>
-              )}
               <div className="bigverdict glitch" data-text="NOBOT">
                 NOBOT
               </div>

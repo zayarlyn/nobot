@@ -1,31 +1,40 @@
 import { useEffect } from 'react';
-import { Outlet } from '@tanstack/react-router';
+import { Outlet, useRouter } from '@tanstack/react-router';
 import Navbar from './common/components/Navbar';
+import LoadingSpinner from './common/components/LoadingSpinner';
 import api from './common/lib/api';
 import { useAuthStore } from './common/store/authStore';
 
+const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+if (nav?.type === 'reload') sessionStorage.removeItem('gamePassed');
+
 export default function App() {
   const setUser = useAuthStore((s) => s.setUser);
+  const setHydrated = useAuthStore((s) => s.setHydrated);
+  const hydrated = useAuthStore((s) => s.hydrated);
+  const router = useRouter();
 
   useEffect(() => {
-    // restore session from existing cookie
     api.get('/auth/me')
       .then(({ data }) => setUser(data.data))
-      .catch(() => {
-        // in dev, auto-login as the seeded demo user so pages work without visiting /login
+      .catch(async () => {
         if (import.meta.env.DEV) {
-          api.post('/auth/login', { username: 'demo', password: 'password' })
+          await api.post('/auth/login', { username: 'demo', password: 'password' })
             .then(({ data }) => setUser(data.data))
             .catch(() => {/* seed not run yet */});
         }
+      })
+      .finally(() => {
+        setHydrated();
+        router.invalidate();
       });
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="app">
       <Navbar />
       <main className="wrap">
-        <Outlet />
+        {hydrated ? <Outlet /> : <LoadingSpinner />}
       </main>
     </div>
   );
