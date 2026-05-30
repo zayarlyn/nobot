@@ -5,7 +5,6 @@ import ThreadCard from '../components/ThreadCard';
 import ThreadComposer from '../components/ThreadComposer';
 import LoadingSpinner from '../../../common/components/LoadingSpinner';
 import Button from '../../../common/components/Button';
-import Navbar from '../../../common/components/Navbar';
 
 interface PreviewComment {
   id: number;
@@ -88,7 +87,6 @@ export default function DiscussionPage() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100">
-      <Navbar />
       <div className="max-w-3xl mx-auto px-4 py-8">
 
         <div className="flex items-center justify-between mb-6">
