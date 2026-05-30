@@ -174,6 +174,7 @@ export function createGameCore(getPosts: () => MonitorPost[], cb: CoreCallbacks)
   }
   function hitsNpc(px: number, py: number, r: number) {
     for (const n of monitors) {
+      if (n.state !== 'idle') continue;
       const dx = px - n.x, dy = py - n.y, rr = r + n.r + 2;
       if (dx * dx + dy * dy < rr * rr) return true;
     }

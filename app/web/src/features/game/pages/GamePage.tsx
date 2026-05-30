@@ -220,6 +220,17 @@ export default function GamePage() {
               {hud.processed}/{hud.total}
             </div>
           </div>
+          <div className="hud-sep" />
+          <div style={{ fontSize: 9, letterSpacing: '.08em', color: 'var(--ink-faint)', lineHeight: 1.4 }}>
+            Music by{' '}
+            <a href="https://pixabay.com/users/hitslab-47305729/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=295075" target="_blank" rel="noreferrer" style={{ color: 'var(--ink-dim)' }}>
+              Ievgen Poltavskyi
+            </a>{' '}
+            from{' '}
+            <a href="https://pixabay.com/music//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=295075" target="_blank" rel="noreferrer" style={{ color: 'var(--ink-dim)' }}>
+              Pixabay
+            </a>
+          </div>
         </footer>
 
         {/* INTRO */}
