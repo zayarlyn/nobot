@@ -58,6 +58,17 @@ export default function GamePage() {
   }, [dialog?.openedAt]);
 
   useEffect(() => {
+    if (!dialog) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'ArrowLeft')  actionsRef.current?.decide('spare');
+      if (e.key === 'ArrowRight') actionsRef.current?.decide('purge');
+      if (e.key === 'ArrowUp')    actionsRef.current?.decide('flag');
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [dialog]);
+
+  useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = '';
@@ -285,10 +296,10 @@ export default function GamePage() {
               </div>
               <div className="verdict-row">
                 <button className="btn green" onClick={() => actionsRef.current?.decide('spare')}>
-                  SPARE<span className="sub">REAL HUMAN</span>
+                  SPARE<span className="sub">REAL HUMAN</span><span className="key-hint">←</span>
                 </button>
                 <button className="btn purge" onClick={() => actionsRef.current?.decide('purge')}>
-                  PURGE<span className="sub">BOT / AI</span>
+                  PURGE<span className="sub">BOT / AI</span><span className="key-hint">→</span>
                 </button>
               </div>
               <button
@@ -300,6 +311,7 @@ export default function GamePage() {
                 <span className="sub" style={{ marginLeft: 6 }}>
                   {dialog.flagsLeft} LEFT
                 </span>
+                <span className="key-hint">↑</span>
               </button>
             </div>
           </div>
