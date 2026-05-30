@@ -2,7 +2,7 @@ import prisma from '../../common/lib/prisma';
 
 export async function submitPost(authorId: number, data: any) {
   return prisma.post.create({
-    data: { ...data, authorId, source: 'USER', tells: JSON.stringify(data.tells) },
+    data: { ...data, authorId, source: 'USER', tells: JSON.stringify(data.tells), isApproved: true },
   });
 }
 
