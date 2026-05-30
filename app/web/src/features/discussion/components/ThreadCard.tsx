@@ -1,6 +1,13 @@
-import Badge from '../../../common/components/Badge';
 import QuickReply from './QuickReply';
 import { timeAgo, highlightKeyword, isDeadThread } from './threadCardHelpers';
+
+const FLAIR_DATA = {
+  HUMAN:    { label: 'HUMAN-SIGHTING', color: 'var(--green)',   bg: 'rgba(77,255,176,.12)' },
+  BOT:      { label: 'BOT-ALERT',      color: 'var(--cyan)',    bg: 'rgba(52,231,255,.12)' },
+  META:     { label: 'META',           color: 'var(--amber)',   bg: 'rgba(255,207,77,.12)' },
+  STRATEGY: { label: 'STRATEGY',       color: '#c9a6ff',        bg: 'rgba(170,130,255,.14)' },
+  GLITCH:   { label: 'GLITCH',         color: 'var(--magenta)', bg: 'rgba(255,61,127,.12)' },
+} as const;
 
 interface PreviewComment {
   id: number;
@@ -33,61 +40,63 @@ interface ThreadCardProps {
 
 export default function ThreadCard({ thread, searchQuery, isReplyOpen, onToggleReply, onReplyPosted }: ThreadCardProps) {
   const dead = isDeadThread(thread.lastActivityAt);
-
-  const voteColor =
-    thread.voteTotal > 0 ? 'text-green-400' :
-    thread.voteTotal < 0 ? 'text-pink-500' :
-    'text-gray-500';
+  const flair = FLAIR_DATA[thread.flair];
+  const voteClass = thread.voteTotal > 0 ? 'pos' : thread.voteTotal < 0 ? 'neg' : '';
 
   return (
-    <li className={`border border-gray-700 rounded-lg p-4 mb-3 bg-gray-900 transition-opacity ${dead ? 'opacity-[0.65]' : ''}`}>
-      <div className="flex items-start gap-3 mb-2">
-        <span className={`text-sm font-bold ${voteColor}`}>
-          ▲ {thread.voteTotal > 0 ? '+' : ''}{thread.voteTotal}
-        </span>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <Badge variant={thread.flair} />
-            <span className="text-gray-400 text-xs">@{thread.author.username}</span>
-          </div>
-          <span className="text-gray-100 font-bold text-base leading-snug">
-            {highlightKeyword(thread.title, searchQuery)}
+    <div className={`thread${dead ? ' dead' : ''}`}>
+      <div className="vote-rail">
+        <button className="vbtn up">▲</button>
+        <div className={`vcount ${voteClass}`}>{thread.voteTotal}</div>
+        <button className="vbtn down">▼</button>
+      </div>
+
+      <div className="thread-main">
+        <div className="thread-top">
+          <span className="flair-badge" style={{ color: flair.color, background: flair.bg }}>
+            {flair.label}
           </span>
-          {thread.body && (
-            <p className="text-gray-400 text-sm mt-1 line-clamp-2">{thread.body}</p>
-          )}
+          <span className="av-mini">{thread.author.username[0].toUpperCase()}</span>
+          <span className="au">@{thread.author.username}</span>
+          <span>· {timeAgo(thread.createdAt)}</span>
         </div>
-      </div>
 
-      <div className="flex items-center gap-4 text-xs text-gray-500 flex-wrap">
-        <button
-          onClick={onToggleReply}
-          className="hover:text-cyan-400 transition-colors"
-        >
-          💬 {thread.commentCount} comment{thread.commentCount !== 1 ? 's' : ''}
-        </button>
-        <span>POSTED {timeAgo(thread.createdAt)}</span>
-        <span>LAST ACTIVITY {timeAgo(thread.lastActivityAt)}</span>
-      </div>
+        <div className="thread-title">
+          {highlightKeyword(thread.title, searchQuery)}
+        </div>
 
-      {isReplyOpen && (
-        <div className="mt-3 border-t border-gray-800 pt-3">
-          {thread.previewComments.length > 0 && (
-            <ul className="mb-3 flex flex-col gap-2">
-              {thread.previewComments.map((c) => (
-                <li key={c.id} className="ml-4 pl-3 border-l border-gray-700">
-                  <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
-                    <span className="text-cyan-400 font-bold">@{c.author.username}</span>
-                    <span>{timeAgo(c.createdAt)}</span>
+        {thread.body && (
+          <div className="thread-body">{thread.body}</div>
+        )}
+
+        <div className="thread-actions">
+          <button className="tact" onClick={onToggleReply}>
+            💬 {thread.commentCount} {thread.commentCount === 1 ? 'comment' : 'comments'}
+          </button>
+          <div className="thread-timestamps">
+            <span>POSTED {timeAgo(thread.createdAt)}</span>
+            <span>LAST ACTIVITY {timeAgo(thread.lastActivityAt)}</span>
+          </div>
+        </div>
+
+        {isReplyOpen && (
+          <div className="reply-panel">
+            {thread.previewComments.map((c) => (
+              <div key={c.id} className="preview-comment">
+                <div>
+                  <div className="chead">
+                    <span className="av-mini">{c.author.username[0].toUpperCase()}</span>
+                    <span className="cau">@{c.author.username}</span>
+                    <span>· {timeAgo(c.createdAt)}</span>
                   </div>
-                  <p className="text-gray-300 text-sm">{c.body}</p>
-                </li>
-              ))}
-            </ul>
-          )}
-          <QuickReply threadId={thread.id} onPosted={onReplyPosted} />
-        </div>
-      )}
-    </li>
+                  <div className="ctext">{c.body}</div>
+                </div>
+              </div>
+            ))}
+            <QuickReply threadId={thread.id} onPosted={onReplyPosted} />
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

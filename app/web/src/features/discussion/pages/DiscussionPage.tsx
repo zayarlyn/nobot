@@ -4,7 +4,7 @@ import { useAuth } from '../../auth/hooks/useAuth';
 import ThreadCard from '../components/ThreadCard';
 import ThreadComposer from '../components/ThreadComposer';
 import LoadingSpinner from '../../../common/components/LoadingSpinner';
-import Button from '../../../common/components/Button';
+import '../discussion.css';
 
 interface PreviewComment {
   id: number;
@@ -27,6 +27,27 @@ interface Thread {
   previewComments: PreviewComment[];
 }
 
+type SortMode = 'hot' | 'new' | 'top';
+
+const SORT_LABELS: Record<SortMode, string> = {
+  hot: 'RANKED BY HEAT',
+  new: 'NEWEST FIRST',
+  top: 'MOST UPVOTED',
+};
+
+const FLAIR_DATA = {
+  HUMAN:    { color: 'var(--green)' },
+  BOT:      { color: 'var(--cyan)' },
+  META:     { color: 'var(--amber)' },
+  STRATEGY: { color: '#c9a6ff' },
+  GLITCH:   { color: 'var(--magenta)' },
+};
+
+function heat(t: Thread) {
+  const hrs = (Date.now() - new Date(t.createdAt).getTime()) / 3_600_000;
+  return t.voteTotal / Math.pow(hrs + 2, 1.3);
+}
+
 export default function DiscussionPage() {
   const { getThreads } = useDiscussion();
   const { user } = useAuth();
@@ -34,29 +55,28 @@ export default function DiscussionPage() {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortMode, setSortMode] = useState<'new' | 'top'>('new');
+  const [sortMode, setSortMode] = useState<SortMode>('hot');
   const [openReplyId, setOpenReplyId] = useState<number | null>(null);
-  const [showComposer, setShowComposer] = useState(false);
 
   useEffect(() => {
     let mounted = true;
-    const fetch = () =>
+    const fetchData = () =>
       getThreads().then((data) => {
         if (mounted) { setThreads(data); setLoading(false); }
       });
-    fetch();
-    const id = setInterval(fetch, 10_000);
+    fetchData();
+    const id = setInterval(fetchData, 10_000);
     return () => { mounted = false; clearInterval(id); };
   }, []);
 
   const filteredThreads = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     let result = q
-      ? threads.filter(
-          (t) => t.title.toLowerCase().includes(q) || (t.body ?? '').toLowerCase().includes(q)
-        )
+      ? threads.filter((t) => t.title.toLowerCase().includes(q) || (t.body ?? '').toLowerCase().includes(q))
       : threads;
-    if (sortMode === 'top') result = [...result].sort((a, b) => b.voteTotal - a.voteTotal);
+    if (sortMode === 'new') result = [...result].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    else if (sortMode === 'top') result = [...result].sort((a, b) => b.voteTotal - a.voteTotal);
+    else result = [...result].sort((a, b) => heat(b) - heat(a));
     return result;
   }, [threads, searchQuery, sortMode]);
 
@@ -82,92 +102,98 @@ export default function DiscussionPage() {
       lastActivityAt: raw.createdAt, previewComments: [],
     };
     setThreads((prev) => [thread, ...prev]);
-    setShowComposer(false);
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100">
-      <div className="max-w-3xl mx-auto px-4 py-8">
+    <main className="screen wrap">
+      <div className="dc-head">
+        <div className="eyebrow neon-cyan">COMMUNITY · r/nobot</div>
+        <h1 className="dc-title glitch" data-text="THE HOLDOUTS">THE HOLDOUTS</h1>
+        <p className="dc-sub">
+          Where the last verified humans compare tells, call out bot farms, and argue about whether any of us are still real.
+          Post a theory, upvote a good catch, reply in the threads.
+        </p>
+        <div className="dc-meta-strip">
+          <span><b className="neon-green">11,842</b> HUMANS</span>
+          <span><b className="neon-cyan">348</b> SCANNING NOW</span>
+          <span><b>{threads.length}</b> THREADS</span>
+        </div>
+      </div>
 
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-cyan-400 tracking-widest">THE HOLDOUTS</h1>
-            <p className="text-gray-500 text-sm mt-1">compare tells · call out bot farms · share strategy</p>
+      <div className="dc-layout">
+        <div>
+          {user?.isVerified && <ThreadComposer onPosted={handleThreadPosted} />}
+
+          <div className="scanner">
+            <label>ACTIVATE SCANNER</label>
+            <input
+              type="text"
+              className="inp"
+              placeholder="search threads…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {searchQuery.trim() && (
+              <div className="scanner-match">
+                {filteredThreads.length} MATCH{filteredThreads.length !== 1 ? 'ES' : ''} FOUND
+              </div>
+            )}
           </div>
-          {user?.isVerified && (
-            <Button variant="solid-cyan" size="md" onClick={() => setShowComposer((v) => !v)}>
-              + NEW THREAD
-            </Button>
+
+          <div className="sortbar">
+            <div className="seg">
+              {(['hot', 'new', 'top'] as SortMode[]).map((s) => (
+                <button key={s} className={sortMode === s ? 'on' : ''} onClick={() => setSortMode(s)}>
+                  {s}
+                </button>
+              ))}
+            </div>
+            <span className="eyebrow" style={{ marginLeft: 'auto', color: 'var(--ink-faint)' }}>
+              {SORT_LABELS[sortMode]}
+            </span>
+          </div>
+
+          {loading && <div className="spinner-wrap"><div className="spinner lg" /></div>}
+
+          {!loading && filteredThreads.length === 0 && (
+            <div className="dc-empty">
+              {searchQuery.trim() ? '⚠️ SIGNAL LOST' : 'No threads yet. Be the first to post a sighting.'}
+            </div>
           )}
-        </div>
 
-        {showComposer && (
-          <ThreadComposer onPosted={handleThreadPosted} onCancel={() => setShowComposer(false)} />
-        )}
-
-        <div className="mb-4">
-          <label className="block text-xs text-gray-500 tracking-widest mb-1">ACTIVATE SCANNER</label>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="search threads..."
-            className="w-full bg-gray-900 border border-gray-700 text-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-cyan-500"
-          />
-          {searchQuery.trim() && (
-            <p className="text-cyan-400 text-xs mt-1 tracking-widest">
-              {filteredThreads.length} MATCH{filteredThreads.length !== 1 ? 'ES' : ''} FOUND
-            </p>
-          )}
-        </div>
-
-        <div className="flex gap-2 mb-6">
-          {(['new', 'top'] as const).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => setSortMode(mode)}
-              className={`px-4 py-1 rounded text-xs font-bold tracking-widest border transition-colors ${
-                sortMode === mode
-                  ? 'border-cyan-500 text-cyan-400 bg-gray-800'
-                  : 'border-gray-700 text-gray-500 hover:border-gray-500'
-              }`}
-            >
-              {mode.toUpperCase()}
-            </button>
+          {!loading && filteredThreads.map((thread) => (
+            <ThreadCard
+              key={thread.id}
+              thread={thread}
+              searchQuery={searchQuery}
+              isReplyOpen={openReplyId === thread.id}
+              onToggleReply={() => handleToggleReply(thread.id)}
+              onReplyPosted={(comment) => handleReplyPosted(thread.id, comment)}
+            />
           ))}
         </div>
 
-        {loading && (
-          <div className="flex justify-center py-12">
-            <LoadingSpinner />
+        <aside className="dc-side">
+          <div className="side-card">
+            <h3>House Rules</h3>
+            <div className="rule"><span className="n">1</span><span>Post the evidence. "Trust me it's a bot" gets you flagged.</span></div>
+            <div className="rule"><span className="n">2</span><span>No doxxing suspected humans. They're endangered.</span></div>
+            <div className="rule"><span className="n">3</span><span>Confirmed synthetic accounts go in BOT-ALERT with receipts.</span></div>
           </div>
-        )}
-
-        {!loading && filteredThreads.length === 0 && (
-          <div className="text-center py-12">
-            {searchQuery.trim() ? (
-              <p className="text-yellow-400 text-lg font-bold tracking-widest">⚠️ SIGNAL LOST</p>
-            ) : (
-              <p className="text-gray-500 tracking-widest">NO TRANSMISSIONS DETECTED</p>
-            )}
+          <div className="side-card">
+            <h3>Flair Legend</h3>
+            <div className="flair-legend">
+              {(['HUMAN', 'BOT', 'META', 'STRATEGY', 'GLITCH'] as const).map((f) => (
+                <div key={f} className="fl">
+                  <span className="swatch" style={{ background: FLAIR_DATA[f].color }} />
+                  {f === 'HUMAN' ? 'HUMAN-SIGHTING' : f === 'BOT' ? 'BOT-ALERT' : f}
+                </div>
+              ))}
+            </div>
           </div>
-        )}
-
-        {!loading && (
-          <ul>
-            {filteredThreads.map((thread) => (
-              <ThreadCard
-                key={thread.id}
-                thread={thread}
-                searchQuery={searchQuery}
-                isReplyOpen={openReplyId === thread.id}
-                onToggleReply={() => handleToggleReply(thread.id)}
-                onReplyPosted={(comment) => handleReplyPosted(thread.id, comment)}
-              />
-            ))}
-          </ul>
-        )}
+          <a href="/" className="btn cyan block">▸ BACK TO THE PURGE</a>
+        </aside>
       </div>
-    </div>
+    </main>
   );
 }
