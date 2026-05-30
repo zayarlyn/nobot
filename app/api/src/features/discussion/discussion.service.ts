@@ -32,7 +32,10 @@ export async function getThreads() {
 }
 
 export async function createThread(authorId: number, data: { flair: string; title: string; body?: string }) {
-  return prisma.thread.create({ data: { authorId, ...data } });
+  return prisma.thread.create({
+    data: { authorId, ...data },
+    include: { author: { select: { id: true, username: true } } },
+  });
 }
 
 export async function getThread(id: number) {
