@@ -1,38 +1,50 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useDiscussion } from '../hooks/useDiscussion';
-import Button from '../../../common/components/Button';
+import { useAuth } from '../../auth/hooks/useAuth';
 
-const FLAIRS = ['HUMAN', 'BOT', 'META', 'STRATEGY', 'GLITCH'] as const;
-type Flair = typeof FLAIRS[number];
+const FLAIRS = [
+  { key: 'HUMAN',    label: 'HUMAN-SIGHTING', color: 'var(--green)' },
+  { key: 'BOT',      label: 'BOT-ALERT',      color: 'var(--cyan)' },
+  { key: 'META',     label: 'META',           color: 'var(--amber)' },
+  { key: 'STRATEGY', label: 'STRATEGY',       color: '#c9a6ff' },
+  { key: 'GLITCH',   label: 'GLITCH',         color: 'var(--magenta)' },
+] as const;
 
-const FLAIR_STYLE: Record<Flair, string> = {
-  HUMAN:    'border-green-500 text-green-400',
-  BOT:      'border-pink-500 text-pink-400',
-  META:     'border-cyan-500 text-cyan-400',
-  STRATEGY: 'border-yellow-500 text-yellow-400',
-  GLITCH:   'border-purple-500 text-purple-400',
-};
+type FlairKey = typeof FLAIRS[number]['key'];
 
 interface ThreadComposerProps {
   onPosted: (thread: any) => void;
-  onCancel: () => void;
 }
 
-export default function ThreadComposer({ onPosted, onCancel }: ThreadComposerProps) {
+export default function ThreadComposer({ onPosted }: ThreadComposerProps) {
   const { createThread } = useDiscussion();
-  const [flair, setFlair] = useState<Flair>('HUMAN');
+  const { user } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [flair, setFlair] = useState<FlairKey>('META');
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState('');
+  const titleRef = useRef<HTMLInputElement>(null);
+
+  function handleOpen() {
+    setOpen(true);
+    setTimeout(() => titleRef.current?.focus(), 0);
+  }
+
+  function handleCancel() {
+    setOpen(false);
+    setError('');
+  }
 
   async function handleSubmit() {
-    if (!title.trim()) return;
+    if (!title.trim()) { setError('Needs a title.'); return; }
     setSubmitting(true);
-    setError(null);
+    setError('');
     try {
       const thread = await createThread({ flair, title: title.trim(), body: body.trim() || undefined });
       onPosted(thread);
+      setTitle(''); setBody(''); setOpen(false);
     } catch {
       setError('TRANSMISSION FAILED');
     } finally {
@@ -40,46 +52,56 @@ export default function ThreadComposer({ onPosted, onCancel }: ThreadComposerPro
     }
   }
 
+  const initial = user ? user.username[0].toUpperCase() : '?';
+  const username = user ? user.username : 'guest';
+
   return (
-    <div className="bg-gray-900 border border-gray-700 rounded-lg p-4 mb-4 flex flex-col gap-3">
-      <div className="flex gap-2 flex-wrap">
-        {FLAIRS.map((f) => (
-          <button
-            key={f}
-            onClick={() => setFlair(f)}
-            className={`px-3 py-1 rounded border text-xs font-bold transition-colors ${
-              flair === f
-                ? `${FLAIR_STYLE[f]} bg-gray-800`
-                : 'border-gray-600 text-gray-500 hover:border-gray-400'
-            }`}
-          >
-            {f}
-          </button>
-        ))}
+    <div className={`composer${open ? ' open' : ''}`}>
+      <div className="comp-collapsed" onClick={handleOpen}>
+        <div className="avatar sm">{initial}</div>
+        <div className="ph">Drop a tell, a sighting, a theory</div>
       </div>
-      <input
-        className="w-full bg-gray-800 border border-gray-700 text-gray-200 rounded p-2 text-sm focus:outline-none focus:border-cyan-500"
-        placeholder="make the catch obvious"
-        maxLength={120}
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        disabled={submitting}
-      />
-      <textarea
-        className="w-full bg-gray-800 border border-gray-700 text-gray-200 rounded p-2 text-sm resize-none focus:outline-none focus:border-cyan-500"
-        placeholder="lay out the evidence"
-        rows={4}
-        maxLength={600}
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-        disabled={submitting}
-      />
-      {error && <p className="text-pink-500 text-xs">{error}</p>}
-      <div className="flex gap-2 justify-end">
-        <Button variant="ghost" size="md" onClick={onCancel} disabled={submitting}>CANCEL</Button>
-        <Button variant="solid-cyan" size="md" onClick={handleSubmit} disabled={submitting || !title.trim()}>
-          {submitting ? 'SENDING...' : 'POST'}
-        </Button>
+      <div className="comp-body">
+        <input
+          ref={titleRef}
+          className="inp"
+          placeholder="Title — make the catch obvious"
+          maxLength={120}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          disabled={submitting}
+        />
+        <textarea
+          className="inp"
+          rows={3}
+          placeholder="Lay out the evidence…"
+          maxLength={600}
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          disabled={submitting}
+        />
+        <div className="flair-pick">
+          {FLAIRS.map((f) => (
+            <button
+              key={f.key}
+              className={`flair-btn${flair === f.key ? ' on' : ''}`}
+              style={flair === f.key ? { background: f.color } : {}}
+              onClick={() => setFlair(f.key)}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <div className="comp-err">{error}</div>
+        <div className="comp-row">
+          <div style={{ fontSize: 11, letterSpacing: '.1em', color: 'var(--ink-faint)' }}>
+            POSTING AS <b style={{ color: 'var(--ink)' }}>@{username}</b>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn ghost" onClick={handleCancel} disabled={submitting}>CANCEL</button>
+            <button className="btn solid-cyan" onClick={handleSubmit} disabled={submitting || !title.trim()}>▸ POST</button>
+          </div>
+        </div>
       </div>
     </div>
   );
