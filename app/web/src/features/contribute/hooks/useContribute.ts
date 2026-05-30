@@ -9,11 +9,11 @@ export function useContribute() {
     return data.data;
   }
 
-  async function getPendingPosts() {
-    const { data } = await api.get('/contribute/pending');
+  async function getMyPosts() {
+    const { data } = await api.get('/contribute/mine');
     return data.data as {
       id: number; kind: string; handle: string; body?: string;
-      topic: string; isApproved: boolean; createdAt: string;
+      topic: string; createdAt: string;
     }[];
   }
 
@@ -21,5 +21,5 @@ export function useContribute() {
     await api.delete(`/contribute/${id}`);
   }
 
-  return { submitPost, getPendingPosts, deletePost };
+  return { submitPost, getMyPosts, deletePost };
 }

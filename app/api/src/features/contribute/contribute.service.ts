@@ -6,12 +6,11 @@ export async function submitPost(authorId: number, data: any) {
   });
 }
 
-export async function getPendingPosts() {
-  return prisma.post.findMany({ where: { isApproved: false } });
-}
-
-export async function approvePost(id: number) {
-  return prisma.post.update({ where: { id }, data: { isApproved: true } });
+export async function getMyPosts(authorId: number) {
+  return prisma.post.findMany({
+    where: { authorId },
+    orderBy: { createdAt: 'desc' },
+  });
 }
 
 export async function deletePost(id: number, userId: number) {

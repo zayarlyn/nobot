@@ -8,14 +8,9 @@ export const submitPost = asyncHandler(async (req: Request, res: Response) => {
   success(res, post, 201);
 });
 
-export const getPendingPosts = asyncHandler(async (_req: Request, res: Response) => {
-  const posts = await contributeService.getPendingPosts();
+export const getMyPosts = asyncHandler(async (req: Request, res: Response) => {
+  const posts = await contributeService.getMyPosts(req.user!.id);
   success(res, posts);
-});
-
-export const approvePost = asyncHandler(async (req: Request, res: Response) => {
-  const post = await contributeService.approvePost(Number(req.params.id));
-  success(res, post);
 });
 
 export const deletePost = asyncHandler(async (req: Request, res: Response) => {

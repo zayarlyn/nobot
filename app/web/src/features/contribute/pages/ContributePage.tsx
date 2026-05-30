@@ -21,7 +21,7 @@ interface Submission {
 export default function ContributePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { submitPost, getPendingPosts, deletePost } = useContribute();
+  const { submitPost, getMyPosts, deletePost } = useContribute();
 
   const [topic, setTopic] = useState<string>(TOPICS[0]);
   const [body, setBody] = useState('');
@@ -39,12 +39,9 @@ export default function ContributePage() {
 
   async function fetchSubmissions() {
     try {
-      const all = await getPendingPosts();
-      const mine = all.filter((p) => p.handle === handle);
-      mine.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setSubmissions(mine);
+      setSubmissions(await getMyPosts());
     } catch {
-      // not logged in — leave list empty
+      // leave list empty
     }
   }
 
