@@ -5,7 +5,7 @@ export default function App() {
   return (
     <div className="app">
       <Navbar />
-      <main className="screen wrap">
+      <main className="wrap">
         <Outlet />
       </main>
     </div>
