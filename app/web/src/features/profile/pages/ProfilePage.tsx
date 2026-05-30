@@ -59,7 +59,7 @@ export default function ProfilePage() {
   const bestScore = profile.games.reduce((m, g) => Math.max(m, g.score), 0);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="screen flex flex-col gap-5">
       {/* Hero */}
       <div style={{ background: 'linear-gradient(180deg, var(--bg-1), var(--bg))', border: '1px solid var(--line-2)', borderRadius: 'var(--radius)', padding: 24, position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(420px 200px at 88% -20%, rgba(52,231,255,.1), transparent 70%)' }} />

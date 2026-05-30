@@ -86,7 +86,7 @@ export default function ContributePage() {
   if (!user) return null;
 
   return (
-    <>
+    <div className="screen">
       <div className="cb-head">
           <div className="eyebrow neon-green">CITIZEN INTELLIGENCE · TRAINING DATA</div>
           <h1 className="cb-title glitch" data-text="FEED THE AUDIT">FEED THE AUDIT</h1>
@@ -196,6 +196,6 @@ export default function ContributePage() {
             </div>
           </aside>
         </div>
-    </>
+    </div>
   );
 }

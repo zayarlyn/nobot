@@ -54,7 +54,7 @@ export default function LeaderboardPage() {
   const podiumSlots = [top3[1], top3[0], top3[2]];
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="screen flex flex-col gap-6">
       {/* Header */}
       <div className="flex flex-col gap-2">
         <span className="eyebrow neon-cyan">NOBOT · LEADERBOARD</span>
