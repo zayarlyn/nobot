@@ -3,8 +3,9 @@ import { useNavigate } from '@tanstack/react-router';
 import { useGame } from '../hooks/useGame';
 import { useAuth } from '../../auth/hooks/useAuth';
 import { initEngine } from '../engine';
-import type { GameStats } from '../engine';
+import type { CoreActions, GameStats, HudData, DialogData, PopupData, RevealData, ResultsData } from '../engine';
 import type { MonitorPost } from '../world';
+import { W } from '../world';
 
 interface ApiPost {
   id: number;
@@ -18,20 +19,46 @@ interface ApiPost {
   tells: string;
 }
 
+const DEFAULT_HUD: HudData = { integrity: 70, integrityClass: 'good', streak: 0, processed: 0, total: 0 };
+
 export default function GamePage() {
   const { getPosts, saveGame } = useGame();
   const { authorize, refreshUser, user } = useAuth();
   const navigate = useNavigate();
 
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const actionsRef = useRef<CoreActions | null>(null);
+  const loadedPosts = useRef<MonitorPost[]>([]);
+  const pendingStats = useRef<GameStats | null>(null);
+
+  const [gameStarted, setGameStarted] = useState(false);
+  const [hud, setHud] = useState<HudData>(DEFAULT_HUD);
+  const [dialog, setDialog] = useState<DialogData | null>(null);
+  const [popup, setPopup] = useState<PopupData | null>(null);
+  const [reveal, setReveal] = useState<RevealData | null>(null);
+  const [results, setResults] = useState<ResultsData | null>(null);
+  const [scanPos, setScanPos] = useState<{ x: number; y: number } | null>(null);
   const [showAuth, setShowAuth] = useState(false);
   const [authUsername, setAuthUsername] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
+  const [popupKey, setPopupKey] = useState(0);
+  const [scoreKey, setScoreKey] = useState(0);
+  const [timerFraction, setTimerFraction] = useState(1);
 
-  const pendingStats = useRef<GameStats | null>(null);
-  const loadedPosts = useRef<MonitorPost[]>([]);
   const gateNotice = new URLSearchParams(window.location.search).get('gate') === 'discuss';
+
+  useEffect(() => {
+    if (!dialog) { setTimerFraction(1); return; }
+    setTimerFraction(1);
+    const id = setInterval(() => {
+      const fraction = Math.max(0, 1 - (performance.now() - dialog.openedAt) / dialog.timeLimit);
+      setTimerFraction(fraction);
+    }, 100);
+    return () => clearInterval(id);
+  }, [dialog?.openedAt]);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -41,16 +68,32 @@ export default function GamePage() {
   }, []);
 
   useEffect(() => {
-    // Boot engine immediately so intro + canvas render right away.
-    // Posts load in background; engine reads them on game start.
-    const cleanup = initEngine(
-      () => loadedPosts.current,
-      (stats) => {
+    if (!canvasRef.current || !stageRef.current) return;
+
+    const { cleanup, actions } = initEngine(canvasRef.current, stageRef.current, () => loadedPosts.current, {
+      onHudChange: setHud,
+      onDialogOpen: setDialog,
+      onDialogClose: () => setDialog(null),
+      onPopupShow: (d) => {
+        setPopup(d);
+        setPopupKey((k) => k + 1);
+      },
+      onPopupHide: () => setPopup(null),
+      onRevealShow: setReveal,
+      onRevealHide: () => setReveal(null),
+      onResultsShow: (d) => {
+        setResults(d);
+        setScoreKey((k) => k + 1);
+      },
+      onResultsHide: () => setResults(null),
+      onEndGame: (stats) => {
         pendingStats.current = stats;
         if (user) saveGame(stats).catch(() => {});
       },
-      () => setShowAuth(true),
-    );
+      onJoin: () => setShowAuth(true),
+      onScanPrompt: setScanPos,
+    });
+    actionsRef.current = actions;
 
     getPosts()
       .then((raw: ApiPost[]) => {
@@ -72,10 +115,19 @@ export default function GamePage() {
           })(),
         }));
       })
-      .catch(() => {}); // posts failing is non-fatal; game runs with empty pool
+      .catch(() => {});
 
     return cleanup;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // compute scan button / popup screen position from world coords
+  function worldToScreen(wx: number, wy: number) {
+    if (!canvasRef.current || !stageRef.current) return { x: 0, y: 0 };
+    const cr = canvasRef.current.getBoundingClientRect();
+    const wr = stageRef.current.getBoundingClientRect();
+    const scale = cr.width / W;
+    return { x: cr.left - wr.left + wx * scale, y: cr.top - wr.top + wy * scale };
+  }
 
   async function handleAuthSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -91,36 +143,50 @@ export default function GamePage() {
     setAuthError('');
     try {
       await authorize(authUsername.trim(), authPassword);
-      if (pendingStats.current) {
-        await saveGame(pendingStats.current).catch(() => {});
-      }
+      if (pendingStats.current) await saveGame(pendingStats.current).catch(() => {});
       await refreshUser();
       navigate({ to: '/discuss' });
     } catch (err: unknown) {
-      const axErr = err as { response?: { status?: number; data?: { message?: string } } };
-      setAuthError(axErr?.response?.data?.message ?? 'Something went wrong.');
+      const ax = err as { response?: { status?: number; data?: { message?: string } } };
+      setAuthError(ax?.response?.data?.message ?? 'Something went wrong.');
     } finally {
       setAuthLoading(false);
     }
   }
 
+  const scanScreen = scanPos ? worldToScreen(scanPos.x, scanPos.y) : null;
+  const popupScreen = popup ? worldToScreen(popup.worldX, popup.worldY) : null;
+
   return (
     <>
-      <div className="game-stage">
+      <div className="game-stage" ref={stageRef}>
         {/* STAGE */}
         <div className="stage-wrap">
-          <canvas id="game" width={960} height={600}></canvas>
+          <canvas ref={canvasRef} id="game" width={960} height={600} />
           <div className="controls-hint">
             WASD / ARROWS — MOVE
             <br />E — SCAN
           </div>
-          <button id="scanBtn" className="scan-btn">
-            ⌖ SCAN
-          </button>
-          <div id="correctPopup" className="correct-popup">
-            <div className="cp-verdict">—</div>
-            <div className="cp-delta">—</div>
-          </div>
+
+          {/* scan affordance — React positioned */}
+          {scanScreen && (
+            <button
+              className="scan-btn show"
+              style={{ left: scanScreen.x, top: scanScreen.y }}
+              onClick={() => actionsRef.current?.interact()}
+            >
+              ⌖ SCAN
+            </button>
+          )}
+
+          {/* correct popup — React positioned */}
+          {popup && popupScreen && (
+            <div key={popupKey} className="correct-popup show" style={{ left: popupScreen.x, top: popupScreen.y }}>
+              <div className={`cp-verdict ${popup.verdictClass}`}>{popup.verdict}</div>
+              <div className={`cp-delta ${popup.deltaClass}`}>{popup.delta}</div>
+            </div>
+          )}
+
           <div className="controls">
             <div className="dpad">
               <button className="dpad-btn up">▲</button>
@@ -137,199 +203,214 @@ export default function GamePage() {
           <div className="hud-meter">
             <div className="lbl">
               <span>Integrity</span>
-              <span id="hudIntegrityV">70%</span>
+              <span>{hud.integrity}%</span>
             </div>
             <div className="meter-track">
-              <div id="hudIntegrity" className="meter-fill good" style={{ width: '70%' }} />
+              <div className={`meter-fill ${hud.integrityClass}`} style={{ width: `${hud.integrity}%` }} />
             </div>
           </div>
           <div className="hud-sep" />
           <div className="hud-pill">
             <div className="k">Streak</div>
-            <div className="v neon-green" id="hudStreak">
-              0
-            </div>
+            <div className="v neon-green">{hud.streak}</div>
           </div>
           <div className="hud-pill">
             <div className="k">Audited</div>
-            <div className="v" id="hudProcessed">
-              0/10
+            <div className="v">
+              {hud.processed}/{hud.total}
             </div>
           </div>
         </footer>
 
         {/* INTRO */}
-        <div className="overlay" id="intro">
-          <div className="gpanel wide">
-            <div className="eyebrow">HUMAN VERIFICATION PROTOCOL</div>
-            {gateNotice && (
-              <div style={{ fontSize: 12, letterSpacing: '.1em', color: 'var(--magenta)', marginBottom: 6 }}>
-                ⚠ ACCESS DENIED — verify your humanity to enter the Discussion forum.
+        {!gameStarted && (
+          <div className="overlay open">
+            <div className="gpanel wide">
+              <div className="eyebrow">HUMAN VERIFICATION PROTOCOL</div>
+              {gateNotice && (
+                <div style={{ fontSize: 12, letterSpacing: '.1em', color: 'var(--magenta)', marginBottom: 6 }}>
+                  ⚠ ACCESS DENIED — verify your humanity to enter the Discussion forum.
+                </div>
+              )}
+              <div className="bigverdict glitch" data-text="NOBOT">
+                NOBOT
               </div>
-            )}
-            <div className="bigverdict glitch" data-text="NOBOT">
-              NOBOT
+              <p className="muted" style={{ fontSize: 14, lineHeight: 1.6, margin: 0 }}>
+                A humans-only group wants proof you're real.{' '}
+                <span className="neon-cyan">Sort the posts. Spare the humans. Purge the bots.</span> A real human can
+                smell a bot. A bot cannot.
+              </p>
+              <div className="row" style={{ gap: 18 }}>
+                <div className="eyebrow neon-green" style={{ flex: 1, textAlign: 'center' }}>
+                  ◉ SPARE — HUMAN
+                </div>
+                <div className="eyebrow neon-mag" style={{ flex: 1, textAlign: 'center' }}>
+                  ⬡ PURGE — BOT
+                </div>
+              </div>
+              <button
+                className="btn solid-green lg block"
+                onClick={() => {
+                  actionsRef.current?.start();
+                  setGameStarted(true);
+                }}
+              >
+                BEGIN VERIFICATION ▸
+              </button>
             </div>
-            <p className="muted" style={{ fontSize: 14, lineHeight: 1.6, margin: 0 }}>
-              A humans-only group wants proof you're real.{' '}
-              <span className="neon-cyan">Sort the posts. Spare the humans. Purge the bots.</span> A real human can
-              smell a bot. A bot cannot.
-            </p>
-            <div className="row" style={{ gap: 18 }}>
-              <div className="eyebrow neon-green" style={{ flex: 1, textAlign: 'center' }}>
-                ◉ SPARE — HUMAN
-              </div>
-              <div className="eyebrow neon-mag" style={{ flex: 1, textAlign: 'center' }}>
-                ⬡ PURGE — BOT
-              </div>
-            </div>
-            <button className="btn solid-green lg block" id="startBtn">
-              BEGIN VERIFICATION ▸
-            </button>
           </div>
-        </div>
+        )}
 
         {/* DIALOG */}
-        <div className="overlay" id="dialog">
-          <div className="gpanel">
-            <div className="ghead" id="dlgHead">
-              <div className="eyebrow">
-                <span className="neon-cyan">⌖</span> SUBMITTED · <span id="dlgTopic">—</span>
-              </div>
-              <button className="closex" id="dlgClose">
-                ✕
-              </button>
-            </div>
-            <div className="post">
-              <div className="post-head">
-                <div className="avatar" id="dlgAv">
-                  ?
+        {dialog && (
+          <div className="overlay open">
+            <div className="gpanel">
+              <div className="ghead">
+                <div className="eyebrow">
+                  <span className="neon-cyan">⌖</span> SUBMITTED · <span>{dialog.topic}</span>
+                  {dialog.custom && <span className="srctag">· COMMUNITY</span>}
                 </div>
-                <div className="post-meta">
-                  <div className="name" id="dlgName">
-                    —
-                  </div>
-                  <div className="handle" id="dlgHandle">
-                    —
+                <button className="closex" onClick={() => actionsRef.current?.closeDialog()}>
+                  ✕
+                </button>
+              </div>
+              <div className="post">
+                <div className="post-head">
+                  <div className="avatar">{dialog.av}</div>
+                  <div className="post-meta">
+                    <div className="name">{dialog.name}</div>
+                    <div className="handle">{dialog.handle}</div>
                   </div>
                 </div>
+                {dialog.imageUrl && (
+                  <div className="post-img">
+                    <img src={dialog.imageUrl} alt="submitted media" />
+                  </div>
+                )}
+                {dialog.body && <div className="post-body">{dialog.body}</div>}
               </div>
-              <div className="post-img" id="dlgImgWrap" style={{ display: 'none' }}>
-                <img id="dlgImg" alt="submitted media" />
+              <div className="timer-bar">
+                <div className={`timer-fill${timerFraction < 0.25 ? ' low' : ''}`} style={{ width: `${timerFraction * 100}%` }} />
               </div>
-              <div className="post-body" id="dlgBody">
-                —
+              <div className="eyebrow" style={{ textAlign: 'center' }}>
+                VERDICT?
               </div>
-            </div>
-            <div className="eyebrow" style={{ textAlign: 'center' }}>
-              VERDICT?
-            </div>
-            <div className="verdict-row">
-              <button className="btn green" id="spareBtn">
-                SPARE<span className="sub">REAL HUMAN</span>
+              <div className="verdict-row">
+                <button className="btn green" onClick={() => actionsRef.current?.decide('spare')}>
+                  SPARE<span className="sub">REAL HUMAN</span>
+                </button>
+                <button className="btn purge" onClick={() => actionsRef.current?.decide('purge')}>
+                  PURGE<span className="sub">BOT / AI</span>
+                </button>
+              </div>
+              <button
+                className="btn amber block"
+                disabled={dialog.flagsLeft <= 0}
+                onClick={() => actionsRef.current?.decide('flag')}
+              >
+                ⚑ FLAG AS AMBIGUOUS
+                <span className="sub" style={{ marginLeft: 6 }}>
+                  {dialog.flagsLeft} LEFT
+                </span>
               </button>
-              <button className="btn purge" id="purgeBtn">
-                PURGE<span className="sub">BOT / AI</span>
-              </button>
             </div>
-            <button className="btn amber block" id="flagBtn">
-              ⚑ FLAG AS AMBIGUOUS
-              <span className="sub" style={{ marginLeft: 6 }}>
-                2 LEFT
-              </span>
-            </button>
           </div>
-        </div>
+        )}
 
         {/* REVEAL */}
-        <div className="overlay" id="reveal">
-          <div className="gpanel">
-            <div className="eyebrow">VERDICT LOGGED</div>
-            <div className="bigverdict" id="bigVerdict">
-              —
-            </div>
-            <div className="truth-line">
-              This account was <b id="truthKind">—</b>
-            </div>
-            <hr className="divider" />
-            <div className="eyebrow">STYLE FINGERPRINT</div>
-            <div className="tells" id="tellsList"></div>
-            <hr className="divider" />
-            <div className="row between center">
-              <div className="delta" id="revealDelta">
-                —
+        {reveal && (
+          <div className="overlay open">
+            <div className="gpanel">
+              <div className="eyebrow">VERDICT LOGGED</div>
+              <div className={`bigverdict ${reveal.verdictClass}`}>{reveal.verdict}</div>
+              <div className="truth-line">
+                This account was <b className={reveal.truthClass}>{reveal.truthKind}</b>
               </div>
-              <button className="btn solid-cyan" id="continueBtn">
-                CONTINUE ▸
-              </button>
+              <hr className="divider" />
+              <div className="eyebrow">STYLE FINGERPRINT</div>
+              <div className="tells">
+                {reveal.tells.map((t, i) => (
+                  <div key={i} className="tell">
+                    <span className="b">▸</span>
+                    <span>{t}</span>
+                  </div>
+                ))}
+              </div>
+              <hr className="divider" />
+              <div className="row between center">
+                <div className={`delta ${reveal.deltaClass}`}>{reveal.delta}</div>
+                <button className="btn solid-cyan" onClick={() => actionsRef.current?.continueReveal()}>
+                  CONTINUE ▸
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* RESULTS */}
-        <div className="overlay" id="results">
-          <div className="gpanel wide">
-            <div className="eyebrow">VERIFICATION COMPLETE</div>
-            <div className="row center" style={{ alignItems: 'flex-end', gap: 18 }}>
-              <div className="bigscore neon-cyan" id="resScore">
-                0
-              </div>
-              <div className="col" style={{ gap: 2, paddingBottom: 6 }}>
-                <div className="eyebrow">ACCURACY</div>
-                <div className="display" style={{ fontSize: 26 }} id="resAcc">
-                  0%
+        {results && (
+          <div className="overlay open">
+            <div className="gpanel wide">
+              <div className="eyebrow">VERIFICATION COMPLETE</div>
+              <div className="row center" style={{ alignItems: 'flex-end', gap: 18 }}>
+                <div key={scoreKey} className="bigscore neon-cyan glitch-burst">
+                  {results.score}
+                </div>
+                <div className="col" style={{ gap: 2, paddingBottom: 6 }}>
+                  <div className="eyebrow">ACCURACY</div>
+                  <div className="display" style={{ fontSize: 26 }}>
+                    {results.accuracy}
+                  </div>
                 </div>
               </div>
+              <hr className="divider" />
+              <div className={`bigverdict ${results.verdictClass}`}>{results.verdict}</div>
+              <p className="muted" style={{ fontSize: 13, lineHeight: 1.6, margin: 0 }}>
+                {results.blurb}
+              </p>
+              <hr className="divider" />
+              <div className="score-grid">
+                <div className="hud-pill">
+                  <div className="k">Bots Terminated</div>
+                  <div className="v neon-cyan">{results.purgedBots}</div>
+                </div>
+                <div className="hud-pill">
+                  <div className="k">Humans Saved</div>
+                  <div className="v neon-green">{results.savedHumans}</div>
+                </div>
+                <div className="hud-pill">
+                  <div className="k">Humans Lost</div>
+                  <div className="v neon-mag">{results.killedHumans}</div>
+                </div>
+                <div className="hud-pill">
+                  <div className="k">Bots Escaped</div>
+                  <div className="v neon-mag">{results.escapedBots}</div>
+                </div>
+              </div>
+              {results.passed ? (
+                <button className="btn solid-green lg block" onClick={() => actionsRef.current?.join()}>
+                  JOIN THE FORUM ▸
+                </button>
+              ) : (
+                <button
+                  className="btn ghost lg block"
+                  onClick={() => {
+                    actionsRef.current?.restart();
+                    setGameStarted(true);
+                  }}
+                >
+                  ▸ RETRY VERIFICATION
+                </button>
+              )}
             </div>
-            <hr className="divider" />
-            <div className="bigverdict" id="resVerdict">
-              —
-            </div>
-            <p className="muted" id="resBlurb" style={{ fontSize: 13, lineHeight: 1.6, margin: 0 }}>
-              —
-            </p>
-            <hr className="divider" />
-            <div className="score-grid">
-              <div className="hud-pill">
-                <div className="k">Bots Terminated</div>
-                <div className="v neon-cyan" id="resBots">
-                  0
-                </div>
-              </div>
-              <div className="hud-pill">
-                <div className="k">Humans Saved</div>
-                <div className="v neon-green" id="resSaved">
-                  0
-                </div>
-              </div>
-              <div className="hud-pill">
-                <div className="k">Humans Lost</div>
-                <div className="v neon-mag" id="resKilled">
-                  0
-                </div>
-              </div>
-              <div className="hud-pill">
-                <div className="k">Bots Escaped</div>
-                <div className="v neon-mag" id="resEscaped">
-                  0
-                </div>
-              </div>
-            </div>
-            <button className="btn solid-green lg block" id="joinBtn" style={{ display: 'none' }}>
-              JOIN THE FORUM ▸
-            </button>
-            <button className="btn ghost lg block" id="playAgainBtn">
-              ▸ RETRY VERIFICATION
-            </button>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* FX */}
-      <div className="fx-scanlines"></div>
-      <div className="fx-vignette"></div>
+      <div className="fx-scanlines" />
+      <div className="fx-vignette" />
 
-      {/* AUTH MODAL — React controlled */}
+      {/* AUTH MODAL */}
       {showAuth && (
         <div className="overlay open" style={{ zIndex: 70 }}>
           <div className="gpanel">
