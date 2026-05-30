@@ -1,11 +1,10 @@
 import { Link } from '@tanstack/react-router';
 
 const NAV_LINKS = [
-  { to: '/' as const,            label: 'Game',        exact: true },
-  { to: '/discuss' as const,     label: 'Discuss',     exact: false },
-  { to: '/leaderboard' as const, label: 'Leaderboard', exact: false },
-  { to: '/profile' as const,     label: 'Profile',     exact: false },
-  { to: '/contribute' as const,  label: 'Contribute',  exact: false },
+  { to: '/discuss' as const,      label: 'Discuss',     exact: false },
+  { to: '/leaderboard' as const,  label: 'Leaderboard', exact: false },
+  { to: '/profile' as const,      label: 'Profile',     exact: false },
+  { to: '/contribute' as const,   label: 'Contribute',  exact: false },
 ];
 
 export default function Navbar() {
