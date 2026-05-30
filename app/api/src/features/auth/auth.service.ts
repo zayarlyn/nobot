@@ -19,3 +19,17 @@ export async function login(username: string, password: string) {
   const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET!, { expiresIn: '7d' });
   return { token, user: { id: user.id, username: user.username, isVerified: user.isVerified } };
 }
+
+export async function authorize(username: string, password: string) {
+  const existing = await prisma.user.findUnique({ where: { username } });
+  if (existing) {
+    const valid = await bcrypt.compare(password, existing.passwordHash);
+    if (!valid) throw unauthorized('Wrong password for this username.');
+    const token = jwt.sign({ id: existing.id }, process.env.JWT_SECRET!, { expiresIn: '7d' });
+    return { token, user: { id: existing.id, username: existing.username, isVerified: existing.isVerified } };
+  }
+  const passwordHash = await bcrypt.hash(password, 10);
+  const user = await prisma.user.create({ data: { username, passwordHash } });
+  const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET!, { expiresIn: '7d' });
+  return { token, user: { id: user.id, username: user.username, isVerified: user.isVerified } };
+}

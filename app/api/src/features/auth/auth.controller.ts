@@ -19,6 +19,12 @@ export const logout = asyncHandler(async (_req: Request, res: Response) => {
   success(res, null);
 });
 
+export const authorize = asyncHandler(async (req: Request, res: Response) => {
+  const { token, user } = await authService.authorize(req.body.username, req.body.password);
+  res.cookie('nobot_token', token, { httpOnly: true, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
+  success(res, user);
+});
+
 export const me = asyncHandler(async (req: Request, res: Response) => {
   success(res, req.user);
 });
