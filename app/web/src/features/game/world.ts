@@ -42,13 +42,13 @@ export function buildGrid(racks: Rack[]): number[][] {
 }
 
 export interface MonitorPost {
+  id: number;
   name: string;
   handle: string;
   av: string;
   body?: string;
   imageUrl?: string;
   topic: string;
-  kind: 'human' | 'ai';
   tells: string[];
   custom?: boolean;
 }

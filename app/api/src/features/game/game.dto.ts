@@ -10,3 +10,8 @@ export const CreateGameDto = z.object({
   killedHumans: z.number(),
   escapedBots: z.number(),
 });
+
+export const DecisionDto = z.object({
+  postId: z.number().int().positive(),
+  action: z.enum(['spare', 'purge', 'flag']),
+});

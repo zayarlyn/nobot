@@ -6,6 +6,15 @@ export function useGame() {
     return data.data;
   }
 
+  async function decide(postId: number, action: 'spare' | 'purge' | 'flag'): Promise<{
+    correct: boolean | null;
+    kind: 'human' | 'ai';
+    tells: string[];
+  }> {
+    const { data } = await api.post('/game/decisions', { postId, action });
+    return data.data;
+  }
+
   async function saveGame(payload: {
     score: number; accuracy: number; verdict: string; streak: number;
     purgedBots: number; savedHumans: number; killedHumans: number; escapedBots: number;
@@ -14,5 +23,5 @@ export function useGame() {
     return data.data;
   }
 
-  return { getPosts, saveGame };
+  return { getPosts, decide, saveGame };
 }
