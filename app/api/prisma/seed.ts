@@ -1,19 +1,61 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
+  // clear existing data (order respects FK constraints)
+  await prisma.vote.deleteMany();
+  await prisma.comment.deleteMany();
+  await prisma.thread.deleteMany();
+  await prisma.game.deleteMany();
+  await prisma.post.deleteMany();
+  await prisma.user.deleteMany();
+
+  const hash = (pw: string) => bcrypt.hash(pw, 10);
+
+  // ── users ────────────────────────────────────────────────────────────────
+  const [demo, cipher, nullvec, phantomix, reyja, lurk0] = await Promise.all([
+    prisma.user.create({ data: { username: 'demo', passwordHash: await hash('password'), isVerified: true } }),
+    prisma.user.create({ data: { username: 'cipher_9', passwordHash: await hash('password'), isVerified: true } }),
+    prisma.user.create({ data: { username: 'nullvec', passwordHash: await hash('password'), isVerified: true } }),
+    prisma.user.create({ data: { username: 'phantomix', passwordHash: await hash('password'), isVerified: true } }),
+    prisma.user.create({ data: { username: 'reyja', passwordHash: await hash('password'), isVerified: true } }),
+    prisma.user.create({ data: { username: 'lurk0', passwordHash: await hash('password'), isVerified: false } }),
+  ]);
+
+  // ── games ────────────────────────────────────────────────────────────────
+  type GameRow = { userId: number; score: number; accuracy: number; verdict: string; streak: number; purgedBots: number; savedHumans: number; killedHumans: number; escapedBots: number };
+  const gameRows: GameRow[] = [
+    // demo — 3 sessions, steady improvement
+    { userId: demo.id, score: 8400, accuracy: 83, verdict: 'ACCESS GRANTED', streak: 6, purgedBots: 6, savedHumans: 5, killedHumans: 1, escapedBots: 2 },
+    { userId: demo.id, score: 5200, accuracy: 71, verdict: 'UNDER REVIEW', streak: 4, purgedBots: 4, savedHumans: 4, killedHumans: 2, escapedBots: 2 },
+    { userId: demo.id, score: 2100, accuracy: 58, verdict: 'ACCESS DENIED', streak: 2, purgedBots: 2, savedHumans: 3, killedHumans: 3, escapedBots: 5 },
+    // cipher_9 — top scorer
+    { userId: cipher.id, score: 11200, accuracy: 91, verdict: 'LAST HUMAN STANDING', streak: 9, purgedBots: 9, savedHumans: 7, killedHumans: 1, escapedBots: 0 },
+    { userId: cipher.id, score: 9800, accuracy: 88, verdict: 'ACCESS GRANTED', streak: 8, purgedBots: 8, savedHumans: 6, killedHumans: 1, escapedBots: 1 },
+    // nullvec — strong but volatile
+    { userId: nullvec.id, score: 9100, accuracy: 85, verdict: 'ACCESS GRANTED', streak: 7, purgedBots: 7, savedHumans: 6, killedHumans: 2, escapedBots: 1 },
+    { userId: nullvec.id, score: 3300, accuracy: 55, verdict: 'ACCESS DENIED', streak: 3, purgedBots: 3, savedHumans: 3, killedHumans: 4, escapedBots: 4 },
+    // phantomix — consistent mid-tier
+    { userId: phantomix.id, score: 6700, accuracy: 74, verdict: 'UNDER REVIEW', streak: 5, purgedBots: 5, savedHumans: 5, killedHumans: 2, escapedBots: 3 },
+    { userId: phantomix.id, score: 6100, accuracy: 72, verdict: 'UNDER REVIEW', streak: 5, purgedBots: 5, savedHumans: 4, killedHumans: 2, escapedBots: 3 },
+    { userId: phantomix.id, score: 4400, accuracy: 64, verdict: 'FLAGGED', streak: 3, purgedBots: 3, savedHumans: 4, killedHumans: 3, escapedBots: 4 },
+    // reyja — low sessions, decent accuracy
+    { userId: reyja.id, score: 5500, accuracy: 70, verdict: 'UNDER REVIEW', streak: 4, purgedBots: 4, savedHumans: 4, killedHumans: 2, escapedBots: 3 },
+  ];
+
+  await prisma.game.createMany({ data: gameRows });
+
+  // ── posts ─────────────────────────────────────────────────────────────────
   await prisma.post.deleteMany();
 
   await prisma.post.createMany({
     data: [
       // ── AI posts ───────────────────────────────────────────────────────────
       {
-        source: 'AI',
-        kind: 'ai',
-        name: 'TrendPulse Daily',
-        handle: '@trendpulse_now',
-        avatar: 'T',
+        source: 'AI', kind: 'ai',
+        name: 'TrendPulse Daily', handle: '@trendpulse_now', avatar: 'T',
         body: 'The new album is a sonic journey that masterfully blends nostalgia with innovation, offering listeners an unforgettable experience. A must-listen! 🎶✨',
         topic: 'Pop Culture',
         tells: JSON.stringify([
@@ -24,76 +66,6 @@ async function main() {
         explanation: 'No real human calls an album a "sonic journey" — that is ad-copy language. The closing CTA and emoji garnish are dead giveaways of automated content farming.',
         isApproved: true,
       },
-      {
-        source: 'AI',
-        kind: 'ai',
-        name: 'HealthWise Bot',
-        handle: '@healthwise_tips',
-        avatar: 'H',
-        body: 'Did you know that staying hydrated is crucial for maintaining optimal cognitive function? Experts recommend drinking at least 8 glasses of water daily for peak performance! 💧',
-        topic: 'Health',
-        tells: JSON.stringify([
-          '"Did you know" opener — standard engagement-bait hook',
-          '"Optimal", "crucial", "peak performance" — wellness-content vocabulary cluster',
-          'Vague citation ("Experts recommend") with no source',
-          'Emoji punctuation at the end',
-        ]),
-        explanation: 'The "did you know" hook, passive citation of unnamed experts, and tidy emoji close are hallmarks of health-content bots that recycle shallow wellness tips.',
-        isApproved: true,
-      },
-      {
-        source: 'AI',
-        kind: 'ai',
-        name: 'FinanceFlow',
-        handle: '@financeflow_ai',
-        avatar: 'F',
-        body: 'Investing early is the key to building long-term wealth. Compound interest works like magic, turning small contributions into significant gains over time. Start today! 📈',
-        topic: 'Finance',
-        tells: JSON.stringify([
-          'Declarative opening with zero personal stake',
-          '"Works like magic" — metaphor-as-explanation, no actual numbers',
-          'Imperative CTA ("Start today!") with urgency emoji',
-          'No acknowledgment of risk — uniformly positive framing',
-        ]),
-        explanation: 'Real people talking about investing mention volatility, bad years, or personal losses. This post has none of that friction. The risk-free enthusiasm and CTA read as auto-generated filler.',
-        isApproved: true,
-      },
-      {
-        source: 'AI',
-        kind: 'ai',
-        name: 'TechInsider Pro',
-        handle: '@techinsider_pro',
-        avatar: 'I',
-        body: 'Artificial intelligence is revolutionizing industries across the globe, from healthcare to finance and beyond. The future of technology is here, and it is more exciting than ever!',
-        topic: 'Technology',
-        tells: JSON.stringify([
-          'Sweeping generalisation with no concrete example',
-          '"Revolutionizing", "across the globe", "more exciting than ever" — hype vocabulary',
-          'No personal angle or lived experience',
-          'Sentence ends with exclamation, no nuance or counterpoint',
-        ]),
-        explanation: 'This is a textbook AI-written hot-take: high confidence, zero specifics, no acknowledgment of downsides. Humans who care about tech tend to mention a specific thing they find interesting or frustrating.',
-        isApproved: true,
-      },
-      {
-        source: 'AI',
-        kind: 'ai',
-        name: 'MindsetGuru',
-        handle: '@mindset_ascend',
-        avatar: 'G',
-        body: 'Success is not given — it is earned through consistent effort, unwavering dedication, and a growth mindset. Every setback is a setup for a greater comeback. Believe in yourself! 🚀',
-        topic: 'Motivation',
-        tells: JSON.stringify([
-          'Back-to-back motivational clichés with no original thought',
-          '"Every setback is a setup for a comeback" — recycled aphorism',
-          'Rocket emoji used as a sincerity substitute',
-          'No specific story or failure to ground the advice',
-        ]),
-        explanation: 'Motivational accounts are heavily bot-farmed. The tell here is the total absence of a specific story — just abstract nouns stacked until it sounds meaningful. Real people usually have a reason they\'re posting this.',
-        isApproved: true,
-      },
-
-      // ── Human posts ────────────────────────────────────────────────────────
       {
         source: 'AI',
         kind: 'human',
@@ -466,6 +438,24 @@ async function main() {
           'No advice sought, no resolution — just the contradiction on display',
         ]),
         explanation: 'Relationship bots ask for advice or offer it. This just presents an absurd situation with a great kicker and no ask — the structure of someone processing confusion aloud.',
+        isApproved: true,
+      },
+      {
+        source: 'AI', kind: 'ai',
+        name: 'SportsBuzz AI', handle: '@sportsbuzz_ai', avatar: 'S',
+        body: "Tonight's match was a testament to the team's resilience and strategic excellence. The players demonstrated remarkable synergy, culminating in a victory that will be remembered for years to come.",
+        topic: 'Sports',
+        tells: JSON.stringify(['Corporate sports-media cadence', '"Testament to" boilerplate opener', 'Vague superlatives with no specifics']),
+        explanation: 'Real sports takes name specific players, call plays stupid, or argue. This read like a press release written by committee.',
+        isApproved: true,
+      },
+      {
+        source: 'AI', kind: 'human',
+        name: 'dan_w', handle: '@danw_kicks', avatar: 'D',
+        body: "ref was cooked from the 40th minute. still can't believe we held on. my heart.",
+        topic: 'Sports',
+        tells: JSON.stringify(['Fragmented syntax under stress', 'Specific time reference (40th minute)', 'Physical reaction ("my heart")']),
+        explanation: 'The fragmented pacing and the vague but emotionally specific "my heart" closer are hallmarks of real-time emotional posting — something generative models consistently smooth over.',
         isApproved: true,
       },
     ],
