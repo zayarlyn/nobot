@@ -28,8 +28,10 @@
   --cyan-glow: 0 0 1px var(--cyan), 0 0 14px rgba(52, 231, 255, 0.45);
   --mag-glow: 0 0 1px var(--magenta), 0 0 16px rgba(255, 61, 127, 0.5);
 
-  --display: 'Space Mono', ui-monospace, monospace;
-  --ui: 'JetBrains Mono', ui-monospace, monospace;
+  --display: "Space Mono", ui-monospace, monospace;
+  --ui:      "JetBrains Mono", ui-monospace, monospace;
+
+  --glitch: 0.6;
 
   --maxw: 1180px;
   --radius: 4px;
